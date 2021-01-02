@@ -1,0 +1,71 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<xacro:include filename="$(find frea_description)/urdf/head/mouth/mouth.urdf.xacro"/>
+<xacro:include filename="$(find frea_description)/urdf/head/ears/left_ear.urdf.xacro"/>
+<xacro:include filename="$(find frea_description)/urdf/head/ears/right_ear.urdf.xacro"/>
+<xacro:include filename="$(find frea_description)/urdf/sensors/frea_camera.urdf.xacro"/>
+
+<xacro:macro name="head" params="parent xyz rpy">
+    <xacro:mouth parent="head_link" xyz="0.0265 0 -0.023" rpy="0 0 0"/>
+    <xacro:left_ear parent="head_link" xyz="0.005 0.062 -0.002"
+                    rpy="0 0 0"/>
+    <xacro:right_ear parent="head_link" xyz="0.005 -0.062 -0.002"
+                     rpy="0 0 0"/>
+    <xacro:frea_camera parent="head_link" xyz="0.07 0 -0.00075"
+                      rpy="0 0 0" name="head"/>
+
+    <joint name="head_joint" type="revolute">
+        <axis xyz="1 0 0"/>
+        <!-- One MG995 Servo -->
+        <limit effort="0.85" velocity="5"
+               upper="1.57" lower="-1.57"/>
+        <origin xyz="${xyz}" rpy="${rpy}"/>
+        <parent link="${parent}"/>
+        <child link="head_link"/>
+    </joint>
+
+    <link name="head_link">
+        <inertial>
+            <origin xyz="-0.006087 -0.003053 -0.002113" rpy="0 0 1.57"/>
+            <mass value="0.743802"/>
+            <inertia ixx="1.307e-03" ixy="7.982e-05" ixz="4.672e-06"
+                     iyy="1.087e-03" iyz="-2.803e-04" izz="1.637e-03"/>
+        </inertial>
+
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 1.57"/>
+            <geometry>
+                <mesh filename="$(find frea_description)/meshes/head.stl"
+                      scale="0.001 0.001 0.001"/>
+            </geometry>
+        </visual>
+
+        <collision>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <box size="0.134 0.188 0.123"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <gazebo reference="head_link">
+        <mu1>0.2</mu1>
+        <mu2>0.2</mu2>
+        <maxVel>0.0</maxVel>
+        <minDepth>0.001</minDepth>
+    </gazebo>
+
+    <transmission name="head_transmission">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="head_joint">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="head_motor">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+        </actuator>
+    </transmission>
+</xacro:macro>
+
+</robot>

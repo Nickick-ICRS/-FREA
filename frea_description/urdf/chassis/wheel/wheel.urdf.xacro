@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<!-- mirror parameter - 1 for the left wheel, -1 for the right wheel -->
+<xacro:macro name="wheel" params="parent name xyz rpy mirror">
+    <joint name="${name}_joint" type="continuous">
+        <axis xyz="0 ${mirror} 0"/>
+        <!-- 104:1 gear ratio, need to check these values -->
+        <limit effort="10" velocity="${3*3.14}"/>
+        <origin xyz="${xyz}" rpy="${rpy}"/>
+        <parent link="${parent}"/>
+        <child link="${name}_link"/>
+    </joint>
+
+    <link name="${name}_link">
+        <inertial>
+            <origin xyz="0 0 0"/>
+            <mass value="0.880493"/>
+            <inertia ixx="2.747e-03" ixy="0.0" ixz="0.0"
+                     iyy="5.285e-03" iyz="0.0" izz="2.747e-03"/>
+        </inertial>
+
+        <visual>
+            <origin xyz="0 ${-mirror*0.021} 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="$(find frea_description)/meshes/wheel.stl"
+                      scale="0.001 ${mirror*0.001} 0.001"/>
+            </geometry>
+        </visual>
+
+        <collision>
+            <origin xyz="0 0 0" rpy="1.57 0 0"/>
+            <geometry>
+                <cylinder radius="0.1" length="0.042"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <gazebo reference="${name}_link">
+        <mu1>0.9</mu1>
+        <mu2>0.9</mu2>
+        <maxVel>0.0</maxVel>
+        <minDepth>0.001</minDepth>
+    </gazebo>
+
+    <transmission name="${name}_transmission">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="${name}_joint">
+            <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="${name}_motor">
+            <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+        </actuator>
+    </transmission>
+</xacro:macro>
+
+</robot>

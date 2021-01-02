@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>frea_description</name>
+  <version>0.0.0</version>
+  <description>The frea_description package</description>
+
+  <maintainer email="nickhafner@rocketmail.com">nickick</maintainer>
+
+  <license>MIT</license>
+
+  <author email="nickhafner@rocketmail.com">Nick Hafner</author>
+
+  <exec_depend>xacro</exec_depend>
+  <buildtool_depend>catkin</buildtool_depend>
+</package>

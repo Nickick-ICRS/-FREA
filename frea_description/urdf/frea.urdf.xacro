@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="htpp://www.ros.org/wiki/xacro"
+       name="frea">
+
+<xacro:include filename="$(find frea_description)/urdf/chassis/chassis.urdf.xacro"/>
+<xacro:include filename="$(find frea_description)/urdf/head/head.urdf.xacro"/>
+<xacro:include filename="$(find frea_description)/urdf/neck/neck_mid.urdf.xacro"/>
+<xacro:include filename="$(find frea_description)/urdf/neck/neck_end.urdf.xacro"/>
+
+<!-- Dummy parent link for Gazebo -->
+<link name="parent_link"/>
+
+<!-- The link from base_link to the chassis is not fixed (as the chassis
+     can pitch), but Gazebo does not allow a non-fixed joint between
+     links without mass properties - thus the base_link must have mass and
+     cannot be the "parent" link -->
+<link name="base_link">
+    <inertial>
+        <mass value="1e-3"/>
+        <inertia ixx="1e-7" ixy="0.0" ixz="0.0"
+                 iyy="1e-7" iyz="0.0" izz="1e-7"/>
+    </inertial>
+</link>
+
+<joint name="parent_joint" type="fixed">
+    <parent link="parent_link"/>
+    <child link="base_link"/>
+</joint>
+
+<gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+        <robotNamespace>/</robotNamespace>
+    </plugin>
+
+    <self_collide>false</self_collide>
+</gazebo>
+
+<xacro:chassis/>
+
+<xacro:neck_mid parent="chassis_link" name="lower_neck"
+                xyz="0 -0.063 0.275" rpy="0 1.57 0"/>
+<xacro:neck_end parent="lower_neck_link" name="upper_neck"
+                xyz="0 0.063 0.225" rpy="0 0 3.14"/>
+
+<xacro:neck_mid parent="chassis_link" name="upper_tail"
+                xyz="0 0.063 0.275" rpy="0 1.57 3.14"/>
+<xacro:neck_end parent="upper_tail_link" name="lower_tail"
+                xyz="0 0.063 0.225" rpy="0 0 3.14"/>
+
+<xacro:head parent="upper_neck_link" xyz="0 0 0.315" rpy="0 -1.57 3.14"/>
+
+</robot>

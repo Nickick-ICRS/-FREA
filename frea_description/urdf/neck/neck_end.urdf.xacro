@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<xacro:macro name="neck_end" params="parent name xyz rpy">
+    <joint name="${name}_joint" type="revolute">
+        <axis xyz="0 1 0"/>
+        <!-- 370 Kv BLDC with 40:1 reduction ratio -->
+        <limit effort="24" velocity="6.28"
+               upper="${120*3.14/180}" lower="${-120*3.14/180}"/>
+        <origin xyz="${xyz}" rpy="${rpy}"/>
+        <parent link="${parent}"/>
+        <child link="${name}_link"/>
+    </joint>
+
+    <link name="${name}_link">
+        <inertial>
+            <origin xyz="-0.004 0.002964 0.107674" rpy="1.57 0 1.57"/>
+            <mass value="0.099676"/>
+            <inertia ixx="6.109e-04" ixy="2.886e-05" ixz="3.265e-09"
+                     iyy="1.291e-04" iyz="-2.792e-08" izz="6.155e-04"/>
+        </inertial>
+
+        <visual>
+            <origin xyz="0 0 0" rpy="1.57 0 1.57"/>
+            <geometry>
+                <mesh filename="$(find frea_description)/meshes/end_link.stl"
+                      scale="0.001 0.001 0.001"/>
+            </geometry>
+        </visual>
+
+        <collision>
+            <origin xyz="0 0 0.125" rpy="0 0 0"/>
+            <geometry>
+                <box size="0.02 0.02 0.25"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <gazebo reference="${name}_link">
+        <mu1>0.2</mu1>
+        <mu2>0.2</mu2>
+        <maxVel>0.0</maxVel>
+        <minDepth>0.001</minDepth>
+    </gazebo>
+
+    <transmission name="${name}_transmission">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="${name}_joint">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="${name}_joint">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+        </actuator>
+    </transmission>
+</xacro:macro>
+
+</robot>

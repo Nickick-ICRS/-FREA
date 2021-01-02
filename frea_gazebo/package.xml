@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>frea_gazebo</name>
+  <version>0.0.0</version>
+  <description>The frea_gazebo package</description>
+
+  <maintainer email="nickhafner@rocketmail.com">Nick Hafner</maintainer>
+
+  <license>MIT</license>
+
+
+  <author email="nickhafner@rocketmail.com">Nick Hafner</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>gazebo_plugins</depend>
+  <depend>gazebo_ros</depend>
+  <depend>roscpp</depend>
+
+  <export>
+    <gazebo_ros gazebo_model_path="${prefix}/models"
+                gazebo_media_path="${prefix}"
+                plugin_path="${prefix}/lib"/>
+  </export>
+</package>

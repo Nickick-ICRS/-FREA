@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<xacro:include filename="$(find frea_description)/urdf/chassis/wheel/wheel.urdf.xacro"/>
+<xacro:include filename="$(find frea_description)/urdf/sensors/imu.urdf.xacro"/>
+
+<xacro:macro name="chassis">
+    <xacro:wheel parent="chassis_link" xyz="0 0.198 0" rpy="0 0 0"
+                 mirror="1" name="left_wheel"/>
+    <xacro:wheel parent="chassis_link" xyz="0 -0.198 0" rpy="0 0 0"
+                 mirror="-1" name="right_wheel"/>
+
+    <xacro:imu parent="chassis_link" xyz="0 0 0" name="imu"/>
+
+    <!-- This joint represents the "joint" between the center of the
+         chassis and the constantly flat base link. It's not driveable,
+         it's measured by the orientation of the IMU -->
+    <joint name="chassis_joint" type="continuous">
+        <axis xyz="0 1 0"/>
+        <limit effort="0" velocity="0"/>
+        <origin xyz="0 0 0" rpy="0 ${-30*3.14/180} 0"/>
+        <parent link="base_link"/>
+        <child link="chassis_link"/>
+    </joint>
+
+    <link name="chassis_link">
+        <inertial>
+            <origin xyz="-0.016274 0 0.028966" rpy="${30*3.14/180} 0 1.57"/>
+            <mass value="5.955352"/>
+            <inertia ixx="2.386e-02" ixy="4.317e-05" ixz="-1.844e-04"
+                     iyy="6.679e-02" iyz="-6.456e-03" izz="5.912e-02"/>
+        </inertial>
+
+        <visual>
+            <origin xyz="0 0 0" rpy="${30*3.14/180} 0 1.57"/>
+            <geometry>
+                <mesh filename="$(find frea_description)/meshes/chassis.stl"
+                      scale="0.001 0.001 0.001"/>
+            </geometry>
+        </visual>
+
+        <collision>
+            <origin xyz="0 0 0" rpy="1.57 0 0"/>
+            <geometry>
+                <cylinder radius="0.06" length="0.35"/>
+            </geometry>
+        </collision>
+
+        <collision>
+            <origin xyz="0 0 0.12" rpy="0 0 0"/>
+            <geometry>
+                <box size="0.14 0.07 0.14"/>
+            </geometry>
+        </collision>
+
+        <collision>
+            <origin xyz="0 0 0.195" rpy="0 0 0"/>
+            <geometry>
+                <box size="0.02 0.02 0.2"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <gazebo reference="chassis_link">
+        <mu1>0.2</mu1>
+        <mu2>0.2</mu2>
+        <maxVel>0.0</maxVel>
+        <minDepth>0.001</minDepth>
+    </gazebo>
+</xacro:macro>
+
+</robot>

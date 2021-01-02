@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+
+<launch>
+    <!-- Set to false to launch the simulation instead of launching on
+         hardware -->
+    <arg name="hardware" default="true"/>
+
+    <param name="robot_description"
+           command="xacro $(find frea_description)/urdf/frea.urdf.xacro"/>
+
+    <group unless="$(arg hardware)">
+        <include file="$(find frea_gazebo)/launch/frea_gazebo.launch"/>
+    </group>
+
+    <node name="robot_state_publisher" pkg="robot_state_publisher"
+          type="robot_state_publisher" respawn="false" output="screen"/>
+</launch>
