@@ -12,4 +12,7 @@
     <!-- Spawn in robot -->
     <node name="spawn_robot" pkg="gazebo_ros" type="spawn_model"
           args="-param robot_description -urdf -model frea -x 0 -y 0 -z 0.1"/>
+
+    <rosparam command="load"
+              file="$(find frea_gazebo)/config/ros_controllers.yaml"/>
 </launch>

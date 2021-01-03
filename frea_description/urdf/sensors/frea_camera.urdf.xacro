@@ -47,6 +47,7 @@
                 <imageTopicName>${name}_camera/image_raw</imageTopicName>
                 <cameraInfoTopicName>${name}_camera/camera_info</cameraInfoTopicName>
                 <frameName>${name}_camera_link_optical</frameName>
+                <cameraName>${name}_camera</cameraName>
                 <hackBaseLine>0.07</hackBaseLine>
                 <distortionK1>-0.430658</distortionK1>
                 <distortionK2>0.235174</distortionK2>

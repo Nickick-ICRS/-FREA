@@ -1,0 +1,42 @@
+gazebo_ros_control:
+    pid_gains:
+        left_wheel_joint:
+            p: 10000
+            i: 0
+            d: 0
+        right_wheel_joint:
+            p: 10000
+            i: 0
+            d: 0
+        lower_neck_joint:
+            p: 10000
+            i: 0
+            d: 0
+        upper_neck_joint:
+            p: 10000
+            i: 0
+            d: 0
+        lower_tail_joint:
+            p: 10000
+            i: 0
+            d: 0
+        upper_tail_joint:
+            p: 10000
+            i: 0
+            d: 0
+        head_joint:
+            p: 10000
+            i: 0
+            d: 0
+        mouth_joint:
+            p: 10000
+            i: 0
+            d: 0
+        left_ear_joint:
+            p: 10000
+            i: 0
+            d: 0
+        right_ear_joint:
+            p: 10000
+            i: 0
+            d: 0
