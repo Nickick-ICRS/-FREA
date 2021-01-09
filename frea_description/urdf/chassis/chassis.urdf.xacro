@@ -19,7 +19,7 @@
         <axis xyz="0 1 0"/>
         <limit effort="0" velocity="0"/>
         <origin xyz="0 0 0" rpy="0 ${-30*3.14/180} 0"/>
-        <parent link="base_link"/>
+        <parent link="fixed_base_link"/>
         <child link="chassis_link"/>
     </joint>
 

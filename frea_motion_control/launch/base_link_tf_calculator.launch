@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+    <node name="base_link_tf_publisher" pkg="frea_motion_control"
+          type="base_link_tf_publisher">
+        <param name="base_link" value="base_link"/>
+        <param name="chassis_link" value="chassis_link"/>
+        <param name="ma_history_length" value="7"/>
+    </node>
+</launch>

@@ -20,4 +20,7 @@
     <!-- Robot state publisher so we can see all joints in TF -->
     <node name="robot_state_publisher" pkg="robot_state_publisher"
           type="robot_state_publisher"/>
+
+    <!-- Special publisher for the base_link to chassis_link transform -->
+    <include file="$(find frea_motion_control)/launch/base_link_tf_calculator.launch"/>
 </launch>
