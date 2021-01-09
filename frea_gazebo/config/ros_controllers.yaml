@@ -58,13 +58,17 @@ frea:
 gazebo_ros_control:
     pid_gains:
         left_wheel_joint:
-            p: 10
-            i: 0
+            p: 1
+            i: 0.02
             d: 0
+            i_clamp_min: -5
+            i_clamp_max: 5
         right_wheel_joint:
-            p: 10
-            i: 0
+            p: 1
+            i: 0.02
             d: 0
+            i_clamp_min: -5
+            i_clamp_max: 5
         lower_neck_joint:
             p: 5000
             i: 0
