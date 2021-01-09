@@ -1,5 +1,5 @@
 # VIM swap files
-.swp
+*.swp
 
 # Compiled python code
-.pyc
+*.pyc
