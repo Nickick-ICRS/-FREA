@@ -13,3 +13,9 @@ There are currently no custom plugins.
 ## World Files
 
 There are currently no world files.
+
+## Config
+
+### ros_controllers.yaml
+
+This config file contains the PID values for the gazebo joint controllers and the required controller setup to enable ROS control to interface with them.
