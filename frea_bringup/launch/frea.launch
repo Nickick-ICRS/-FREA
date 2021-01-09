@@ -8,10 +8,16 @@
     <param name="robot_description"
            command="xacro $(find frea_description)/urdf/frea.urdf.xacro"/>
 
+    <!-- Launch simulation components if requested -->
     <group unless="$(arg hardware)">
         <include file="$(find frea_gazebo)/launch/frea_gazebo.launch"/>
     </group>
 
-    <node name="robot_state_publisher" pkg="robot_state_publisher"
-          type="robot_state_publisher" respawn="false" output="screen"/>
+    <!-- Launch hardware components if requested -->
+    <group if="$(arg hardware)">
+    </group>
+    
+    <!-- Launch ROS control and robot state publishers -->
+    <include
+        file="$(find frea_bringup)/launch/components/controllers.launch"/>
 </launch>

@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Joint controller configurations - The appropriate controller
+         parameters are expected to be loaded via config file by either
+         the hardware or simulation launch files. -->
+    <node name="controller_spawner" pkg="controller_manager" type="spawner"
+          args="
+        /frea/controllers/state
+        /frea/controllers/position/left_ear_controller
+        /frea/controllers/position/right_ear_controller
+        /frea/controllers/position/mouth_controller
+        /frea/controllers/position/lower_neck_controller
+        /frea/controllers/position/upper_neck_controller
+        /frea/controllers/position/upper_tail_controller
+        /frea/controllers/position/lower_tail_controller
+        /frea/controllers/velocity/left_wheel_controller
+        /frea/controllers/velocity/right_wheel_controller
+                "/>
+    
+    <!-- Robot state publisher so we can see all joints in TF -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher"
+          type="robot_state_publisher"/>
+</launch>
