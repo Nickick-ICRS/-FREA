@@ -14,5 +14,10 @@
   <depend>rospy</depend>
   <depend>sensor_msgs</depend>
   <depend>tf2_ros</depend>
+  <depend>tf_conversions</depend>
   <depend>eigen_conversions</depend>
+
+  <export>
+    <python path="${prefix}/python/src"/>
+  </export>
 </package>

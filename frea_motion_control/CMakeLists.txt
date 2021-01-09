@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(frea_motion_control)
 
-## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -11,8 +10,11 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   sensor_msgs
   tf2_ros
+  tf_conversions
   eigen_conversions
 )
+
+catkin_python_setup()
 
 catkin_package()
 

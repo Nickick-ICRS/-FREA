@@ -1,0 +1,18 @@
+#!/usr/bin/env python
+from frea_motion_control.training_rewards import RewardCalculator
+
+import rospy
+
+
+def main():
+    rospy.init_node('train_motion_controller')
+
+    rc = RewardCalculator()
+    while not rospy.is_shutdown():
+        rospy.sleep(1)
+
+if __name__ == '__main__':
+    try:
+        main()
+    except rospy.ROSInterruptException:
+        pass
