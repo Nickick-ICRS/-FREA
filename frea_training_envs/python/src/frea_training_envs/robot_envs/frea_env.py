@@ -8,6 +8,7 @@ from gym.utils import seeding
 from sensor_msgs.msg import JointState, Imu
 from std_msgs.msg import Float64
 from rosgraph_msgs.msg import Clock
+from urdf_parser_py.urdf import URDF
 
 from openai_ros import robot_gazebo_env
 
@@ -59,6 +60,11 @@ class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
         self.publishers.append(self._left_ear_pub)
         self.publishers.append(self._right_ear_pub)
 
+        self._head_weight_pub = rospy.Publisher(
+            'adjust_weight/head', Float64, queue_size=1)
+        self._tail_weight_pub = rospy.Publisher(
+            'adjust_weight/tail', Float64, queue_size=1)
+
         rospy.Subscriber('/joint_states', JointState, self.joints_callback)
         rospy.Subscriber('/imu/data', Imu, self.imu_callback)
 
@@ -83,6 +89,8 @@ class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
         self._seed()
         self.steps_beyond_done = None
 
+        self._urdf = URDF.from_parameter_server('/robot_description')
+
         super(FreaEnv, self).__init__(
             controllers_list=self.controllers_list,
             robot_names_space=self.robot_name_space,
@@ -105,6 +113,7 @@ class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
     def _seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
+            
 
     # RobotEnv methods
 
@@ -119,7 +128,12 @@ class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
 
     def check_publishers_connection(self):
         rate = rospy.Rate(10)
+        all_pubs = []
         for pub in self.publishers:
+            all_pubs.append(pub)
+        all_pubs.append(self._head_weight_pub)
+        all_pubs.append(self._tail_weight_pub)
+        for pub in all_pubs:
             topic_name = pub.get_topic_name()
             while(pub.get_num_connections() == 0 and not rospy.is_shutdown()):
                 rospy.logdebug(
@@ -163,6 +177,10 @@ class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
             cmd.data = joints_array[i]
             self.publishers[i].publish(cmd)
 
+    def set_joints(self, joints_array):
+        for i in range(joints_array):
+            
+
     def get_clock_time(self):
         self.clock_time = None
         while self.clock_time is None and not rospy.is_shutdown():
@@ -205,9 +223,18 @@ class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
         """
         raise NotImplementedError()
 
-
     def get_joints(self):
         return self.joints
 
     def get_imu(self):
         return self.imu
+
+    def set_head_mass(self, mass_kg):
+        msg = Float64()
+        msg.data = mass_kg
+        self._head_weight_pub.publish(msg)
+
+    def set_head_mass(self, mass_kg):
+        msg = Float64()
+        msg.data = mass_kg
+        self._tail_weight_pub.publish(msg)
