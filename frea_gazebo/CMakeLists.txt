@@ -11,10 +11,18 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(gazebo REQUIRED)
 
-include_directories(plugins ${catkin_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS})
-link_directories(${GAZEBO_LIBRARY_DIRS})
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEOBO_CXX_FLAGS}")
-
 catkin_package(
     CATKIN_DEPENDS gazebo_ros gazebo_plugins roscpp
 )
+
+include_directories(
+    plugins/include
+    ${catkin_INCLUDE_DIRS}
+    ${GAZEBO_INCLUDE_DIRS})
+link_directories(${GAZEBO_LIBRARY_DIRS})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEOBO_CXX_FLAGS}")
+
+add_library(frea_adjustable_weight SHARED plugins/src/adjustable_weight.cpp)
+target_link_libraries(frea_adjustable_weight
+    ${catkin_LIBRARIES}
+    ${GAZEBO_LIBRARIES})

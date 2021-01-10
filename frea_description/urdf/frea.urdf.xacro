@@ -32,6 +32,20 @@
         <robotNamespace>/</robotNamespace>
     </plugin>
 
+    <!-- Plugin to dynamically change the load on the head -->
+    <plugin name="head_weight" filename="libfrea_adjustable_weight.so">
+        <topicName>/adjust_weight/head</topicName>
+        <linkName>head_link</linkName>
+        <position>0.08 0 -0.082</position>
+    </plugin>
+
+    <!-- Plugin to dynamically change the load on the tail -->
+    <plugin name="tail_weight" filename="libfrea_adjustable_weight.so">
+        <topicName>/adjust_weight/tail</topicName>
+        <linkName>lower_tail_link</linkName>
+        <position>0 0 0.225</position>
+    </plugin>
+
     <self_collide>false</self_collide>
 </gazebo>
 
