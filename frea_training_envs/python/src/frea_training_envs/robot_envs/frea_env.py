@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
+import copy
 import gym
 import rospy
 import numpy as np
 from gym.utils import seeding
 
 from sensor_msgs.msg import JointState, Imu
-from std_msgs.msg import Float64
+from std_msgs.msg import Float32, Float64
 from rosgraph_msgs.msg import Clock
+from frea_msgs.msg import Contact
 from urdf_parser_py.urdf import URDF
 
 from openai_ros import robot_gazebo_env
@@ -15,8 +17,10 @@ from openai_ros import robot_gazebo_env
 class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
     def __init__(self):
 
+        self._contacts = []
+
         # ==================== SET UP ROS PUBLISHERS ====================
-        self.publishers_array = []
+        self.publishers= []
 
         self._left_wheel_pub = rospy.Publisher(
             '/frea/controllers/velocity/left_wheel_controller/command',
@@ -61,27 +65,28 @@ class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
         self.publishers.append(self._right_ear_pub)
 
         self._head_weight_pub = rospy.Publisher(
-            'adjust_weight/head', Float64, queue_size=1)
+            '/adjust_weight/head', Float32, queue_size=1)
         self._tail_weight_pub = rospy.Publisher(
-            'adjust_weight/tail', Float64, queue_size=1)
+            '/adjust_weight/tail', Float32, queue_size=1)
 
         rospy.Subscriber('/joint_states', JointState, self.joints_callback)
         rospy.Subscriber('/imu/data', Imu, self.imu_callback)
+        rospy.Subscriber('/contacts', Contact, self.contact_callback)
 
         # ==================== SET UP FOR SUPER CLASS ====================
 
         self.controllers_list = [
-            'joint_state_controller',
-            'left_ear_controller',
-            'right_ear_controller',
-            'mouth_controller',
-            'head_controller',
-            'lower_neck_controller',
-            'upper_neck_controller',
-            'upper_tail_controller',
-            'lower_tail_controller',
-            'left_wheel_controller',
-            'right_wheel_controller']
+            '/frea/controllers/state',
+            '/frea/controllers/position/left_ear_controller',
+            '/frea/controllers/position/right_ear_controller',
+            '/frea/controllers/position/mouth_controller',
+            '/frea/controllers/position/head_controller',
+            '/frea/controllers/position/lower_neck_controller',
+            '/frea/controllers/position/upper_neck_controller',
+            '/frea/controllers/position/upper_tail_controller',
+            '/frea/controllers/position/lower_tail_controller',
+            '/frea/controllers/velocity/left_wheel_controller',
+            '/frea/controllers/velocity/right_wheel_controller']
 
         self.robot_name_space = ''
         self.reset_controls = True
@@ -93,13 +98,13 @@ class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
 
         super(FreaEnv, self).__init__(
             controllers_list=self.controllers_list,
-            robot_names_space=self.robot_name_space,
+            robot_name_space=self.robot_name_space,
             reset_controls=self.reset_controls)
 
         # Unpause gazebo so we can check topics etc.
         self.gazebo.unpauseSim()
         self._check_all_systems_ready()
-        self._check_all_publishers_read()
+        self._check_all_publishers_ready()
         self.gazebo.pauseSim()
 
         rospy.loginfo("Finished FreaEnv INIT")
@@ -109,6 +114,9 @@ class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
 
     def imu_callback(self, data):
         self.imu = data
+
+    def contact_callback(self, data):
+        self._contacts.append(data)
 
     def _seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -126,29 +134,31 @@ class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
         self.joints = None
         self.imu = None
 
-    def check_publishers_connection(self):
-        rate = rospy.Rate(10)
+    def _check_all_publishers_ready(self):
+        rate = rospy.Rate(1)
         all_pubs = []
         for pub in self.publishers:
             all_pubs.append(pub)
         all_pubs.append(self._head_weight_pub)
         all_pubs.append(self._tail_weight_pub)
+        pub_num = 0
         for pub in all_pubs:
-            topic_name = pub.get_topic_name()
             while(pub.get_num_connections() == 0 and not rospy.is_shutdown()):
-                rospy.logdebug(
-                    "No subscribers to '" + topic_name +
+                rospy.logerr(
+                    "No subscribers to '" + pub.resolved_name +
                     "' yet. Will keep trying.")
                 try:
                     rate.sleep()
                 except rospy.ROSInterruptException:
                     pass
-            rospy.logdebug("'" + topic_name + "' connected")
+            rospy.loginfo("'" + pub.resolved_name + "' connected")
+            pub_num += 1
 
-        rospy.logdebug("All publishers READY")
+        rospy.loginfo("All publishers READY")
 
     def _check_all_systems_ready(self, init=True):
         self.base_position = None
+        self.base_velocity = None
         while self.base_position is None and not rospy.is_shutdown():
             try:
                 self.base_position = rospy.wait_for_message(
@@ -162,14 +172,13 @@ class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
                         abs(i) <= 1e-2 for i in self.base_position.position)
                     velocity_ok = all(
                         abs(i) <= 1e-2 for i in self.base_velocity.velocity)
-                    efforts_ok = all(
-                        abs(i) <= 1e-2 for i in self.base_effort.effort)
-                    ok = position_ok and velocity_ok and effort_ok
-                    rospy.logdebug("Checking init values Ok => " + str(ok))
-            except:
+                    ok = position_ok and velocity_ok
+                    rospy.loginfo("Checking init values Ok => " + str(ok))
+            except Exception as e:
+                rospy.logerr(e)
                 rospy.logerr("'/joint_states' NOT READY yet, will retry.")
 
-        rospy.logdebug("ALL SYSTEMS READY")
+        rospy.loginfo("ALL SYSTEMS READY")
 
     def move_joints(self, joints_array):
         for i in range(len(joints_array)):
@@ -178,8 +187,7 @@ class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
             self.publishers[i].publish(cmd)
 
     def set_joints(self, joints_array):
-        for i in range(joints_array):
-            
+        raise NotImplementedError()
 
     def get_clock_time(self):
         self.clock_time = None
@@ -187,7 +195,7 @@ class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
             try:
                 self.clock_time = rospy.wait_for_message(
                     "/clock", Clock, timeout=1.0)
-                rospy.logdebug("'/clock' READY => " + str(self.clock_time))
+                rospy.loginfo("'/clock' READY => " + str(self.clock_time))
             except:
                 rospy.logerr("Waiting for '/clock' to come online")
         return self.clock_time
@@ -229,12 +237,17 @@ class FreaEnv(robot_gazebo_env.RobotGazeboEnv):
     def get_imu(self):
         return self.imu
 
+    def get_contacts(self):
+        c = copy.deepcopy(self._contacts)
+        self._contacts = []
+        return c
+
     def set_head_mass(self, mass_kg):
-        msg = Float64()
+        msg = Float32()
         msg.data = mass_kg
         self._head_weight_pub.publish(msg)
 
-    def set_head_mass(self, mass_kg):
-        msg = Float64()
+    def set_tail_mass(self, mass_kg):
+        msg = Float32()
         msg.data = mass_kg
         self._tail_weight_pub.publish(msg)

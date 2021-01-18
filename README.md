@@ -22,6 +22,10 @@ Xacro-ed up URDF files and STL files.
 
 Config and plugins for the Gazebo simulator.
 
+### frea_msgs
+
+Custom ROS msgs and srvs.
+
 ### frea_motion_control
 
 Individual joint value control. cmd_vel to wheel vel conversion etc.

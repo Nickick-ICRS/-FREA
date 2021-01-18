@@ -1,6 +1,5 @@
 #include "adjustable_weight.hpp"
-
-#include <string>
+#include "load_param.hpp"
 
 #include <ignition/math.hh>
 

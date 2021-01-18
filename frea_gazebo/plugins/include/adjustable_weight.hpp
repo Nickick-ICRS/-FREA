@@ -11,13 +11,6 @@
 namespace gazebo {
 
 /**
- * @brief Helper function to load parameters from SDF, including defaults
- */
-template<typename T>
-void loadParam(
-    std::string param_name, T &param, sdf::ElementPtr &sdf);
-
-/**
  * @brief Plugin to simulate an adjustable weight on a link of the robot.
  *
  * @details This allows us to train a controller which is capable of
@@ -34,7 +27,7 @@ public:
     /**
      * @brief Destructor
      */
-    ~AdjustableWeight();
+    virtual ~AdjustableWeight();
 
     /**
      * @brief Setup function called when Gazebo loads the plugin

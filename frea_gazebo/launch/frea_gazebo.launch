@@ -2,11 +2,12 @@
 <launch>
     <!-- Gazebo -->
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
-        <arg name="paused" value="false"/>
+        <arg name="paused" value="true"/>
         <arg name="use_sim_time" value="true"/>
         <arg name="recording" value="false"/>
         <arg name="debug" value="true"/>
         <arg name="verbose" value="false"/>
+        <arg name="gui" value="false"/>
     </include>
 
     <!-- Spawn in robot -->

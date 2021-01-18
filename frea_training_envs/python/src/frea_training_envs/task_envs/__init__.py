@@ -1,0 +1,1 @@
+from frea_training_envs.task_envs.motion_control import FreaMotionControlEnv

@@ -9,6 +9,7 @@
         /frea/controllers/position/left_ear_controller
         /frea/controllers/position/right_ear_controller
         /frea/controllers/position/mouth_controller
+        /frea/controllers/position/head_controller
         /frea/controllers/position/lower_neck_controller
         /frea/controllers/position/upper_neck_controller
         /frea/controllers/position/upper_tail_controller

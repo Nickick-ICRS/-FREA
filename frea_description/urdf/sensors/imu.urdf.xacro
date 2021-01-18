@@ -27,7 +27,7 @@
                     name="{name}_plugin">
                 <topicName>${name}/data</topicName>
                 <bodyName>${name}_link</bodyName>
-                <updateRateHZ>50.0</updateRateHZ>
+                <updateRateHZ>0.0</updateRateHZ>
                 <gaussianNoise>0.01</gaussianNoise>
                 <xyzOffset>0 0 0</xyzOffset>
                 <rpyOffset>0 0 0</rpyOffset>

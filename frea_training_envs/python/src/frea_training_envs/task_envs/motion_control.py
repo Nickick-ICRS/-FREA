@@ -3,7 +3,6 @@ import numpy as np
 import rospy
 from tf.transformations import euler_from_quaternion
 
-from gym.envs.registration import register
 from gym import spaces
 
 from geometry_msgs.msg import Vector3, Twist
@@ -12,13 +11,7 @@ from frea_training_envs.robot_envs.frea_env import FreaEnv
 from frea_training_envs.utilities.motion_control_training_rewards \
     import RewardCalculator
 
-timestep_limit_per_episode = 10000 # 1000 Hz gazebo frequency
-
-register(
-    id='FreaMotionControl',
-    entry_point='frea_training_envs.task_envs.motion_control.FreaMotionControlEnv',
-    timestep_limit=timestep_limit_per_episode,
-)
+MAX_TIMESTEPS = 1e4 # 1e3 timesteps per second -> 10s
 
 class FreaMotionControlEnv(FreaEnv):
     def __init__(self):
@@ -27,16 +20,23 @@ class FreaMotionControlEnv(FreaEnv):
         a given position and pitch
 
         For this task we have the following continuous outputs:
-        0: left_wheel_velocity  (0:1, scaled to the velocity limits)
-        1: right_wheel_velocity (0:1, scaled to the velocity limits)
-        2: lower_neck_position  (0:1, scaled to the joint limits)
-        3: upper_neck_position  (0:1, scaled to the joint limits)
-        4: upper_tail_position  (0:1, scaled to the joint limits)
-        5: lower_tail_position  (0:1, scaled to the joint limits)
+        0: left_wheel_velocity  (-1:1, scaled to the velocity limits)
+        1: right_wheel_velocity (-1:1, scaled to the velocity limits)
+        2: lower_neck_position  (-1:1, scaled to the joint limits)
+        3: upper_neck_position  (-1:1, scaled to the joint limits)
+        4: upper_tail_position  (-1:1, scaled to the joint limits)
+        5: lower_tail_position  (-1:1, scaled to the joint limits)
         """
+        super(FreaMotionControlEnv, self).__init__()
+
         num_actions = 6
 
-        self.action_space = spaces.Continuous(num_actions)
+        self.action_space = spaces.Box(
+            low=-1,
+            high=1,
+            shape=(num_actions,),
+            dtype=np.float32,
+        )
 
         self.reward_range = (-np.inf, np.inf)
 
@@ -91,13 +91,13 @@ class FreaMotionControlEnv(FreaEnv):
             # Third, IMU pitch
             1.57,
             # Fourth, cmd_vel limits
-            self._cmd_vel_min_x + self._cmd_vel_range_x,
-            self._cmd_vel_min_z + self._cmd_vel_range_z,
+            self.cmd_vel_min_x + self.cmd_vel_range_x,
+            self.cmd_vel_min_z + self.cmd_vel_range_z,
             # Fifth, head pose limits
-            self._head_min.x + self._head_range.x,
-            self._head_min.y + self._head_range.y,
-            self._head_min.z + self._head_range.z,
-            self._head_min_p + self._head_range_p,
+            self.head_min.x + self.head_range.x,
+            self.head_min.y + self.head_range.y,
+            self.head_min.z + self.head_range.z,
+            self.head_min_p + self.head_range_p,
             # Sixth, tolerances
             self.max_head_pos_tol.x,
             self.max_head_pos_tol.y,
@@ -123,13 +123,13 @@ class FreaMotionControlEnv(FreaEnv):
             # Third, IMU pitch
             -1.57,
             # Fourth, cmd_vel limits
-            self._cmd_vel_min_x,
-            self._cmd_vel_min_z,
+            self.cmd_vel_min_x,
+            self.cmd_vel_min_z,
             # Fifth, head pose limits
-            self._head_min.x,
-            self._head_min.y,
-            self._head_min.z,
-            self._head_min_p,
+            self.head_min.x,
+            self.head_min.y,
+            self.head_min.z,
+            self.head_min_p,
             # Sixth, tolerances
             0,
             0,
@@ -139,7 +139,7 @@ class FreaMotionControlEnv(FreaEnv):
             0
         ])
 
-        self.observation_space = space.Box(obs_low, obs_high)
+        self.observation_space = spaces.Box(obs_low, obs_high)
 
         rospy.logdebug("ACTION SPACE TYPE ==> " + str(self.action_space))
         rospy.logdebug(
@@ -153,6 +153,9 @@ class FreaMotionControlEnv(FreaEnv):
         self.target_head_pitch, self.head_pitch_tol = \
             self.generate_head_pitch()
         self.target_cmd_vel, self.cmd_vel_tol = self.generate_cmd_vel()
+        rospy.loginfo("Target cmd_vel:\n" + str(self.target_cmd_vel))
+        rospy.loginfo("Target head_pos:\n" + str(self.target_head_position))
+        rospy.loginfo("Target head_pitch:\n" + str(self.target_head_pitch))
         self.generate_random_head_and_tail_weights()
 
     def generate_head_position(self):
@@ -170,7 +173,7 @@ class FreaMotionControlEnv(FreaEnv):
     def generate_head_pitch(self):
         r = np.random.rand(2)
         p = self.head_min_p + r[0] * self.head_range_p
-        tol = r[1] * self.max_head_pitch_tol.x
+        tol = r[1] * self.max_head_pitch_tol
         return p, tol
 
     def generate_cmd_vel(self):
@@ -183,20 +186,40 @@ class FreaMotionControlEnv(FreaEnv):
         tol.angular.z = r[1] * self.max_cmd_vel_tol_z
         return cmd, tol
 
-    def generate_random_head_and_tail_weights(self)
+    def generate_random_head_and_tail_weights(self):
         r = np.random.rand(2)
         head = self.head_weight_min + r[0] * self.head_weight_range
         tail = self.tail_weight_min + r[1] * self.tail_weight_range
 
+        rospy.loginfo("Setting head mass to {} kg".format(head))
+        rospy.loginfo("Setting tail mass to {} kg".format(tail))
+
         self.set_head_mass(head)
         self.set_tail_mass(tail)
 
+    def _set_init_pose(self):
+        """Sets the Robot in its init pose
+        """
+        pass
+
     def _init_env_variables(self):
         self.cumulated_reward = 0
+        self.timestep = 0
         self.prepare_for_next_iteration()
 
     def _set_action(self, action):
         rospy.logdebug("Action given ==> " + str(action))
+
+        # Force actions to be in the range 0 - 1
+        for i in range(len(action)):
+            bounded_act = min(max(action[0], -1), 1)
+            if bounded_act != action[i]:
+                rospy.logdebug(
+                    "Input action not in action bounds (" + 
+                    str(action[i]) + "!=" + str(bounded_act) + ").")
+                action[i] = bounded_act
+            # Now that limits are bounded to -1 and 1, switch to 0-1
+            action[i] = action[i]/2 + 0.5
 
         # We care about 0, 1, 2, 3, 4, 5, but 6, 7, 8, 9 need to be set to 0
         joint_values = np.zeros(10)
@@ -238,6 +261,7 @@ class FreaMotionControlEnv(FreaEnv):
 
     def _get_obs(self):
         # Get the observations we care about
+        self.timestep += 1
         
         js = self.get_joints()
         imu = self.get_imu()
@@ -286,8 +310,13 @@ class FreaMotionControlEnv(FreaEnv):
 
     def _is_done(self, observations):
         """
-        We're done if the robot has fallen over
+        We're done if the robot has fallen over or the max timesteps has
+        been reached
         """
+        if self.timestep >= MAX_TIMESTEPS:
+            return True
+        if len(self.get_contacts()):
+            return True
         return False
 
     def _compute_reward(self, observations, done):
@@ -297,17 +326,17 @@ class FreaMotionControlEnv(FreaEnv):
             self.target_head_pitch, self.head_pitch_tol)
 
         rospy.logdebug("################")
-        rospy.logdebug("Reward: " + rew)
+        rospy.logdebug("Reward: " + str(rew))
         rospy.logdebug("################")
 
         return rew
 
     def get_joint_vel(self, joint_state, joint):
         for i in range(len(joint_state.name)):
-            if name == joint:
+            if joint_state.name[i] == joint:
                 return joint_state.velocity[i]
 
     def get_joint_pos(self, joint_state, joint):
         for i in range(len(joint_state.name)):
-            if name == joint:
+            if joint_state.name[i] == joint:
                 return joint_state.position[i]

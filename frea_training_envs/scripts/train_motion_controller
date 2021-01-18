@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+from frea_training_envs.task_envs.motion_control import FreaMotionControlEnv
+
+import gym
+import rospy
+
+from baselines.common.vec_env import DummyVecEnv
+from baselines.ppo2 import ppo2
+
+cmd_line_args = "--env=FreaMotionControl-v0"
+
+def main():
+    rospy.init_node("train_motion_controller")
+
+    env = DummyVecEnv([lambda : gym.make('frea_training_envs:FreaMotionControl-v0')])
+    rospy.loginfo("Env setup complete")
+
+    model = ppo2.learn(env=env, seed=0, total_timesteps=2e7, network='mlp')
+
+
+if __name__ == '__main__':
+    main()

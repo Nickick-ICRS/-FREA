@@ -15,6 +15,7 @@
   <depend>gazebo_plugins</depend>
   <depend>gazebo_ros</depend>
   <depend>roscpp</depend>
+  <depend>frea_msgs</depend>
 
   <export>
     <gazebo_ros gazebo_model_path="${prefix}/models"

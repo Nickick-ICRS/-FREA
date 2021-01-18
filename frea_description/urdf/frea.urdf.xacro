@@ -46,6 +46,15 @@
         <position>0 0 0.225</position>
     </plugin>
 
+    <!-- Plugin to detect and publish contacts with the environment -->
+    <plugin name="contact_detector" filename="libfrea_contact_detector.so">
+        <topicName>/contacts</topicName>
+        <!-- The wheels are supposed to be in contact with the ground, so
+             we don't publish these contacts -->
+        <ignoredCollision0>left_wheel_link_collision</ignoredCollision0>
+        <ignoredCollision1>right_wheel_link_collision</ignoredCollision1>
+    </plugin>
+
     <self_collide>false</self_collide>
 </gazebo>
 

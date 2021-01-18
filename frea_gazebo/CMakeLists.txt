@@ -7,12 +7,13 @@ find_package(catkin REQUIRED COMPONENTS
     gazebo_plugins
     gazebo_ros
     roscpp
+    frea_msgs
 )
 
 find_package(gazebo REQUIRED)
 
 catkin_package(
-    CATKIN_DEPENDS gazebo_ros gazebo_plugins roscpp
+    CATKIN_DEPENDS gazebo_ros gazebo_plugins roscpp frea_msgs
 )
 
 include_directories(
@@ -24,5 +25,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEOBO_CXX_FLAGS}")
 
 add_library(frea_adjustable_weight SHARED plugins/src/adjustable_weight.cpp)
 target_link_libraries(frea_adjustable_weight
+    ${catkin_LIBRARIES}
+    ${GAZEBO_LIBRARIES})
+
+add_library(frea_contact_detector SHARED plugins/src/contact_detector.cpp)
+target_link_libraries(frea_contact_detector
     ${catkin_LIBRARIES}
     ${GAZEBO_LIBRARIES})

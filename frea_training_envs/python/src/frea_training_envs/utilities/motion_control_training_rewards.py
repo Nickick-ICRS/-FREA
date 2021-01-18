@@ -108,15 +108,17 @@ class RewardCalculator:
         """
 
         # Read the state of the chassis and head
-        chassis_state = self._get_link_state('chassis_link', 'world')
-        head_state = self._get_link_state('head_link', 'world')
+        chassis_state = self._get_link_state(
+            'chassis_link', 'world').link_state
+        head_state = self._get_link_state(
+            'head_link', 'world').link_state
 
         # We only care about yaw velocity and base_link frame x velocity
         # Yaw is unchanged in the world frame, and x is just the normal
         # of x and y in the world frame
         chassis_z_vel = chassis_state.twist.angular.z
         chassis_x_vel = math.sqrt(
-            chassis_state.twist.linear.x ** 2,
+            chassis_state.twist.linear.x ** 2 +
             chassis_state.twist.linear.y ** 2)
 
         # Calculate errors
