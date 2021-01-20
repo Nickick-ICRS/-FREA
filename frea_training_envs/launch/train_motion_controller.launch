@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<launch>
+    <param name="robot_description"
+           command="xacro $(find frea_description)/urdf/frea.urdf.xacro"/>
+
+    <param name="/use_sim_time" value="true"/>
+
+    <node name="frea_training" pkg="frea_training_envs"
+          type="train_motion_controller" output="screen"/>
+
+    <node name="robot_state_publisher" pkg="robot_state_publisher"
+          type="robot_state_publisher"/>
+</launch>

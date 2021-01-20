@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro"
+       name="frea">
+
+<!-- Include the main FREA URDF -->
+<xacro:include filename="$(find frea_description)/urdf/frea.urdf.xacro"/>
+
+<!-- Include DART specifics -->
+<xacro:include filename="$(find frea_description)/urdf/dart/frea_dart.urdf.xacro"/>
+
+</robot>

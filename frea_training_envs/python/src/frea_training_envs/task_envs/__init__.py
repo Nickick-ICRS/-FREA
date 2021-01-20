@@ -1,1 +1,1 @@
-from frea_training_envs.task_envs.motion_control import FreaMotionControlEnv
+from frea_training_envs.task_envs.motion_control_dart import FreaMotionControlEnv

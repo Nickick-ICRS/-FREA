@@ -3,19 +3,8 @@ import math
 import rospy
 from tf.transformations import euler_from_quaternion
 
-from gazebo_msgs.srv import GetLinkState
-from sensor_msgs.msg import JointState
-
 class RewardCalculator:
     def __init__(self):
-        # Service to ask gazebo for the exact position of a link wrt another
-        rospy.wait_for_service('/gazebo/get_link_state')
-        self._get_link_state = rospy.ServiceProxy(
-            '/gazebo/get_link_state', GetLinkState)
-
-        rospy.Subscriber(
-            '/joint_states', JointState, self.joint_state_callback)
-
         # Calculated everytime we receive a joint state message
         self._energy_reward = 0
 
@@ -32,7 +21,8 @@ class RewardCalculator:
 
     def calculate_reward(
         self, target_twist, twist_tolerance, target_head_position,
-        head_position_tolerance, target_head_pitch, head_pitch_tolerance):
+        head_position_tolerance, target_head_pitch, head_pitch_tolerance,
+        exact_chassis_state, exact_head_state):
         """
         @brief Calculates the reward based on the requested values,
                tolerances and the true values
@@ -56,13 +46,21 @@ class RewardCalculator:
  
         @param head_pitch_tolerance float The required tolerance of the head
                                     pitch
+
+        @param exact_chassis_state gazebo_msgs/LinkState The exact (as
+                                   measured from the simulator) chassis
+                                   state
+ 
+        @param exact_head_state gazebo_msgs/LinkState The exact (as measured
+                                from the simulator) head state
  
         @returns (float) reward of how well the current values meet the
                  required values and their tolerances
         """
 
         vx, vz, hx, hy, hz, hp = self.calculate_errors(
-            target_twist, target_head_position, target_head_pitch)
+            target_twist, target_head_position, target_head_pitch,
+            exact_chassis_state, exact_head_state)
 
         # Subtract the tolerances to find the true error
         vx = min(vx - twist_tolerance.linear.x, 0)
@@ -84,7 +82,8 @@ class RewardCalculator:
 
 
     def calculate_errors(
-        self, target_twist, target_head_position, target_head_pitch):
+        self, target_twist, target_head_position, target_head_pitch,
+        exact_chassis_state, exact_head_state):
         """
         @brief Calculates the error betweem the requested values and the
                true values
@@ -98,6 +97,13 @@ class RewardCalculator:
         @param target_head_pitch float The required pitch of the head
                                  in the base_link frame
 
+        @param exact_chassis_state gazebo_msgs/LinkState The exact (as
+                                   measured from the simulator) chassis
+                                   state
+ 
+        @param exact_head_state gazebo_msgs/LinkState The exact (as measured
+                                from the simulator) head state
+ 
         @returns The (absolute) errors in the following order:
                  twist linear x
                  twist angular z
@@ -107,19 +113,13 @@ class RewardCalculator:
                  head pitch
         """
 
-        # Read the state of the chassis and head
-        chassis_state = self._get_link_state(
-            'chassis_link', 'world').link_state
-        head_state = self._get_link_state(
-            'head_link', 'world').link_state
-
         # We only care about yaw velocity and base_link frame x velocity
         # Yaw is unchanged in the world frame, and x is just the normal
         # of x and y in the world frame
-        chassis_z_vel = chassis_state.twist.angular.z
+        chassis_z_vel = exact_chassis_state.twist.angular.z
         chassis_x_vel = math.sqrt(
-            chassis_state.twist.linear.x ** 2 +
-            chassis_state.twist.linear.y ** 2)
+            exact_chassis_state.twist.linear.x ** 2 +
+            exact_chassis_state.twist.linear.y ** 2)
 
         # Calculate errors
         twist_x_err = abs(chassis_x_vel - target_twist.linear.x)
@@ -129,18 +129,18 @@ class RewardCalculator:
         # Find head position wrt base link
         # Base link isn't in gazebo, so we read both wrt the origin and then
         # subtract the chassis position from the head position
-        head_pos = head_state.pose.position
-        head_pos.x -= chassis_state.pose.position.x
-        head_pos.y -= chassis_state.pose.position.y
-        head_pos.z -= chassis_state.pose.position.z
+        head_pos = exact_head_state.pose.position
+        head_pos.x -= exact_chassis_state.pose.position.x
+        head_pos.y -= exact_chassis_state.pose.position.y
+        head_pos.z -= exact_chassis_state.pose.position.z
 
         # Extract the pitch of the head. In the world frame this is
         # identical to the base_link frame
         quat = (
-            head_state.pose.orientation.x,
-            head_state.pose.orientation.y,
-            head_state.pose.orientation.z,
-            head_state.pose.orientation.w)
+            exact_head_state.pose.orientation.x,
+            exact_head_state.pose.orientation.y,
+            exact_head_state.pose.orientation.z,
+            exact_head_state.pose.orientation.w)
         head_pitch = euler_from_quaternion(quat)[1]
         
 
@@ -178,7 +178,3 @@ class RewardCalculator:
                     joint_state.velocity[i] * joint_state.effort[i]))
 
         self._energy_reward = 1/(self._energy_mult * sum(energies) + 1)
-
-    
-    def joint_state_callback(self, joint_state):
-        self.calculate_energy_reward(joint_state)

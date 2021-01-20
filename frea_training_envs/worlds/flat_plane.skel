@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<skel version="1.0">
+
+<world name="flat plane">
+    <physics>
+        <time_step>0.01</time_step>
+        <gravity>0 0 -9.81</gravity>
+        <!-- dart doesn't support cylinders :/ and I cba to get bullet to
+             work-->
+        <collision_detector>fcl_mesh</collision_detector>
+    </physics>
+
+    <skeleton name="ground_plane">
+        <mobile>false</mobile>
+        <body name="ground">
+            <transformation>0 0 -0.005 0 0 0</transformation>
+            <visualization_shape>
+                <geometry>
+                    <box>
+                        <size>10 10 0.01</size>
+                    </box>
+                </geometry>
+                <color>0.8 0.8 0.8</color>
+            </visualization_shape>
+        </body>
+        <joint type="weld" name="ground_joint">
+            <parent>world</parent>
+            <child>ground</child>
+        </joint>
+    </skeleton>
+</world>
+
+</skel>

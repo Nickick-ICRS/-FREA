@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>frea_dart</name>
+  <version>0.0.0</version>
+  <description>The frea_dart package</description>
+
+  <maintainer email="nickhafner@rocketmail.com">Nick Hafner</maintainer>
+
+  <license>MIT</license>
+
+  <author email="nickhafner@rocketmail.com">Nick Hafner</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>frea_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>rospy</depend>
+</package>

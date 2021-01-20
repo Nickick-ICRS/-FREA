@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<!-- World link for dart -->
+<link name="world"/>
+<joint name="world_frea" type="floating">
+    <parent link="world"/>
+    <child link="parent_link"/>
+</joint>
+
+<!-- Extra head and tail links for adjustable weight -->
+<link name="head_weight_link"/>
+<joint name="head_weight_joint" type="fixed">
+    <parent link="head_link"/>
+    <child link="head_weight_link"/>
+    <origin xyz="0.08 0 -0.082"/>
+</joint>
+
+<link name="tail_weight_link"/>
+<joint name="tail_weight_joint" type="fixed">
+    <parent link="lower_tail_link"/>
+    <child link="tail_weight_link"/>
+    <origin xyz="0 0 0.225"/>
+</joint>
+
+</robot>
+
+</robot>

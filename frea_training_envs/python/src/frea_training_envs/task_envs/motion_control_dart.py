@@ -7,7 +7,7 @@ from gym import spaces
 
 from geometry_msgs.msg import Vector3, Twist
 
-from frea_training_envs.robot_envs.frea_env import FreaEnv
+from frea_training_envs.robot_envs.frea_env_dart import FreaEnv
 from frea_training_envs.utilities.motion_control_training_rewards \
     import RewardCalculator
 
@@ -27,7 +27,7 @@ class FreaMotionControlEnv(FreaEnv):
         4: upper_tail_position  (-1:1, scaled to the joint limits)
         5: lower_tail_position  (-1:1, scaled to the joint limits)
         """
-        super(FreaMotionControlEnv, self).__init__()
+        FreaEnv.__init__(self)
 
         num_actions = 6
 
@@ -204,7 +204,6 @@ class FreaMotionControlEnv(FreaEnv):
 
     def _init_env_variables(self):
         self.cumulated_reward = 0
-        self.timestep = 0
         self.prepare_for_next_iteration()
 
     def _set_action(self, action):
@@ -261,19 +260,8 @@ class FreaMotionControlEnv(FreaEnv):
 
     def _get_obs(self):
         # Get the observations we care about
-        self.timestep += 1
-        
         js = self.get_joints()
-        imu = self.get_imu()
-        
-        quat = (
-            imu.orientation.x,
-            imu.orientation.y,
-            imu.orientation.z,
-            imu.orientation.w)
 
-        imu_pitch = euler_from_quaternion(quat)[1]
-        
         obs = np.array([
             # First, joint velocities
             self.get_joint_vel(js, 'left_wheel_joint'),
@@ -288,7 +276,7 @@ class FreaMotionControlEnv(FreaEnv):
             self.get_joint_pos(js, 'upper_tail_joint'),
             self.get_joint_pos(js, 'lower_tail_joint'),
             # Third, IMU pitch
-            imu_pitch,
+            self.get_joint_pos(js, 'chassis_joint'),
             # Fourth, cmd_vel
             self.target_cmd_vel.linear.x,
             self.target_cmd_vel.angular.z,
@@ -320,10 +308,14 @@ class FreaMotionControlEnv(FreaEnv):
         return False
 
     def _compute_reward(self, observations, done):
+        self._rc.calculate_energy_reward(self.get_joints())
+        chassis_state = self.get_exact_body_state("fixed_base_link")
+        head_state = self.get_exact_body_state("head_link")
         rew = self._rc.calculate_reward(
             self.target_cmd_vel, self.cmd_vel_tol,
             self.target_head_position, self.head_pos_tol,
-            self.target_head_pitch, self.head_pitch_tol)
+            self.target_head_pitch, self.head_pitch_tol,
+            chassis_state, head_state)
 
         rospy.logdebug("################")
         rospy.logdebug("Reward: " + str(rew))
