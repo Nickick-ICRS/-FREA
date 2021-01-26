@@ -5,16 +5,17 @@
          hardware -->
     <arg name="hardware" default="true"/>
 
-    <param name="robot_description"
-           command="xacro $(find frea_description)/urdf/frea.urdf.xacro"/>
-
     <!-- Launch simulation components if requested -->
     <group unless="$(arg hardware)">
-        <include file="$(find frea_gazebo)/launch/frea_gazebo.launch"/>
+        <param name="/robot_description"
+               command="xacro $(find frea_description)/urdf/frea_dart.urdf.xacro"/>
+        <include file="$(find frea_dart)/launch/frea_dart.launch"/>
     </group>
 
     <!-- Launch hardware components if requested -->
     <group if="$(arg hardware)">
+        <param name="/robot_description"
+               command="xacro $(find frea_description)/urdf/frea.urdf.xacro"/>
     </group>
     
     <!-- Launch ROS control and robot state publishers -->

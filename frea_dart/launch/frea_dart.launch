@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="world"
+         default="$(find frea_training_envs)/worlds/flat_plane.skel"/>
+
+    <rosparam file="$(find frea_dart)/config/simulation_parameters.yaml"
+              command="load"/>
+
+    <rosparam file="$(find frea_dart)/config/ros_controllers.yaml"
+              command="load"/>
+
+    <param name="/frea_dart/world/filepath" value="$(arg world)"/>
+
+    <param name="/use_sim_time" value="true"/>
+
+    <node name="frea_simulation" type="frea_dart" pkg="frea_dart"
+          output="screen"/>
+</launch>

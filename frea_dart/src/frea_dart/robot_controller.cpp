@@ -3,7 +3,12 @@
 RobotController::RobotController(const dart::dynamics::SkeletonPtr &skele)
 {
     robot_.reset(new Robot(skele));
-    cm_.reset(new controller_manager::ControllerManager(robot_.get()));
+
+    // Set up controller manager with its own AsyncSpinner
+    nh_.setCallbackQueue(&queue_);
+    spinner_.reset(new ros::AsyncSpinner(1, &queue_));
+    spinner_->start();
+    cm_.reset(new controller_manager::ControllerManager(robot_.get(), nh_));
 }
 
 RobotController::~RobotController() {

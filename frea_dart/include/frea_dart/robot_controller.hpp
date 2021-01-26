@@ -4,6 +4,7 @@
 #include "frea_dart/robot.hpp"
 
 #include <ros/ros.h>
+#include <ros/callback_queue.h>
 #include <sensor_msgs/JointState.h>
 #include <std_msgs/Float64.h>
 #include <controller_manager/controller_manager.h>
@@ -49,6 +50,21 @@ private:
      * @brief The controller manager interface
      */
     std::shared_ptr<controller_manager::ControllerManager> cm_;
+
+    /**
+     * @brief Nodehandle for our personal callback queue
+     */
+    ros::NodeHandle nh_;
+
+    /**
+     * @brief Seperate callback queue for the controller manager
+     */
+    ros::CallbackQueue queue_;
+
+    /**
+     * @brief Spinner for our personal callback queue
+     */
+    std::shared_ptr<ros::AsyncSpinner> spinner_;
 };
 
 #endif // __ROBOT_CONTROLLER_HPP__

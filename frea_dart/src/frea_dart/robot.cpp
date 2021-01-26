@@ -51,8 +51,9 @@ Robot::Robot(const dart::dynamics::SkeletonPtr &skele) :skele_(skele) {
 
     std::string param_ns = "/" + skele->getName() + "/controllers/";
 
-    auto set_ctrl_type =
-        [this](std::string type, ControlType default_type)
+    auto set_ctrl_type = [this](
+        dart::dynamics::Joint *jnt, std::string type,
+        ControlType default_type, size_t idx)
     {
         if(type.substr(0, 20) == "position_controllers") {
             jnt_ctrl_type_.push_back(ControlType::POSITION);
@@ -68,6 +69,27 @@ Robot::Robot(const dart::dynamics::SkeletonPtr &skele) :skele_(skele) {
                 "Unknown controller type: " << type << " defaulting to "
                 << default_type);
             jnt_ctrl_type_.push_back(default_type);
+        }
+        ROS_INFO_STREAM(
+            "Controlling " << jnt->getName() << " with "
+            << jnt_ctrl_type_.back());
+        hardware_interface::JointHandle jh;
+        switch(jnt_ctrl_type_.back()) {
+        case ControlType::POSITION:
+            jh = hardware_interface::JointHandle(
+                jnt_state_interface_.getHandle(jnt->getName()), &cmd_[idx]);
+            jnt_pos_interface_.registerHandle(jh);
+            break;
+        case ControlType::VELOCITY:
+            jh = hardware_interface::JointHandle(
+                jnt_state_interface_.getHandle(jnt->getName()), &cmd_[idx]);
+            jnt_vel_interface_.registerHandle(jh);
+            break;
+        case ControlType::EFFORT:
+            jh = hardware_interface::JointHandle(
+                jnt_state_interface_.getHandle(jnt->getName()), &cmd_[idx]);
+            jnt_eff_interface_.registerHandle(jh);
+            break;
         }
     };
 
@@ -92,7 +114,7 @@ Robot::Robot(const dart::dynamics::SkeletonPtr &skele) :skele_(skele) {
             hardware_interface::JointHandle jh(
                 jnt_state_interface_.getHandle(jnt->getName()), &cmd_[i]);
             jnt_pos_interface_.registerHandle(jh);
-            set_ctrl_type(type, ControlType::POSITION);
+            set_ctrl_type(jnt, type, ControlType::POSITION, i);
             continue;
         }
 
@@ -103,7 +125,7 @@ Robot::Robot(const dart::dynamics::SkeletonPtr &skele) :skele_(skele) {
             hardware_interface::JointHandle jh(
                 jnt_state_interface_.getHandle(jnt->getName()), &cmd_[i]);
             jnt_vel_interface_.registerHandle(jh);
-            set_ctrl_type(type, ControlType::VELOCITY);
+            set_ctrl_type(jnt, type, ControlType::VELOCITY, i);
             continue;
         }
 
@@ -111,10 +133,7 @@ Robot::Robot(const dart::dynamics::SkeletonPtr &skele) :skele_(skele) {
         param = param_ns + "effort/" + jnt->getName() + "_controller/";
         if(ros::param::get(param + "type", type)) {
             // Create an effort interface handle
-            hardware_interface::JointHandle jh(
-                jnt_state_interface_.getHandle(jnt->getName()), &cmd_[i]);
-            jnt_eff_interface_.registerHandle(jh);
-            set_ctrl_type(type, ControlType::EFFORT);
+            set_ctrl_type(jnt, type, ControlType::EFFORT, i);
             continue;
         }
 

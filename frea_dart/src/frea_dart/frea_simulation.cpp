@@ -5,7 +5,6 @@
 #include <dart/utils/urdf/urdf.hpp>
 #include <dart/utils/utils.hpp>
 
-#include <ros/callback_queue.h>
 #include <rosgraph_msgs/Clock.h>
 
 #include <chrono>
@@ -19,9 +18,7 @@ FreaSimulation::FreaSimulation() {
 }
 
 FreaSimulation::~FreaSimulation() {
-// Dart is naughty and stores the raw pointer I gave it in a shared pointer
-//    if (world_node_)
-//        delete world_node_;
+    // dtor
 }
 
 void FreaSimulation::setupWindow() {
@@ -33,7 +30,7 @@ void FreaSimulation::setupWindow() {
     loadParam("/frea_dart/display/width", width);
     loadParam("/frea_dart/display/height", height);
     loadParam("/frea_dart/display/enable_rendering", render_);
-    loadParam("/frea_dart/display/update_frequency", timesteps_per_frame);
+    loadParam("/frea_dart/display/update_period", timesteps_per_frame);
     timesteps_per_frame_ = timesteps_per_frame;
 
     world_node_ = new dart::gui::osg::WorldNode(world_);
@@ -53,6 +50,9 @@ void FreaSimulation::setupWindow() {
 
 void FreaSimulation::setupPubSubs() {
     clock_pub_ = nh_.advertise<rosgraph_msgs::Clock>("/clock", 1);
+
+    // Set up ROS spinner with 4 threads
+    spinner_.reset(new ros::AsyncSpinner(4));
 }
 
 void FreaSimulation::loadSkeletonParam(
@@ -150,10 +150,14 @@ void FreaSimulation::reset() {
 }
 
 void FreaSimulation::step() {
+    auto step_start = std::chrono::high_resolution_clock::now();
+    //ROS_WARN_STREAM("T: " << timestep_);
+
     world_->step();
 
     publishTime();
 
+    auto now = std::chrono::high_resolution_clock::now();
     if(robot_ctrl_) {
         // Reset if timestep is 0
         if(timestep_ == 0)
@@ -163,12 +167,21 @@ void FreaSimulation::step() {
             robot_ctrl_->update(
                 time_, ros::Duration(world_->getTimeStep()), false);
     }
+    auto dt =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::high_resolution_clock::now() - now);
+    //ROS_INFO_STREAM("Controller update took " << dt.count() / 1e9 << "s");
 
     if(render_) {
         render();
     }
 
     timestep_++;
+
+    dt =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::high_resolution_clock::now() - step_start);
+    //ROS_INFO_STREAM("Step took " << dt.count() / 1e9 << "s");
 }
 
 void FreaSimulation::render() {
@@ -194,12 +207,8 @@ void FreaSimulation::publishTime() {
 }
 
 void FreaSimulation::run() {
-    auto q = ros::getGlobalCallbackQueue();
     while(ros::ok()) {
         step();
-        // Handle ROS callbacks etc. Do not wait for new ones as we publish
-        // the clock...
-        q->callAvailable();
 
         if(windowClosed())
             return;

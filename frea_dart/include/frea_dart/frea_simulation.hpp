@@ -104,6 +104,11 @@ private:
      */
     void publishTime();
 
+    /**
+     * @brief Handles ROS callbacks forever... Run in a parallel thread
+     */
+    void spinRos();
+
     ros::NodeHandle nh_;
 
     dart::simulation::WorldPtr world_;
@@ -119,6 +124,8 @@ private:
     unsigned long long timestep_;
     bool render_;
     ros::Time time_;
+
+    std::unique_ptr<ros::AsyncSpinner> spinner_;
 };
 
 #endif // __FREA_SIMULATION_HPP__
