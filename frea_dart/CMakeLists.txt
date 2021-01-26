@@ -1,12 +1,14 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(frea_dart)
 
-add_compile_options(-std=c++14)
+add_compile_options(-std=c++17)
 
 find_package(catkin REQUIRED COMPONENTS
     frea_msgs
     roscpp
     rospy
+    controller_manager
+    hardware_interface
 )
 find_package(DART 6.8.2 REQUIRED COMPONENTS
     gui
@@ -26,6 +28,8 @@ include_directories(
 )
 
 add_library(${PROJECT_NAME}_frea_simulation
+    src/frea_dart/robot.cpp
+    src/frea_dart/robot_controller.cpp
     src/frea_dart/frea_simulation.cpp
 )
 target_link_libraries(${PROJECT_NAME}_frea_simulation

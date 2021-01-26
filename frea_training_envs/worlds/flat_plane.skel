@@ -14,10 +14,18 @@
         <mobile>false</mobile>
         <body name="ground">
             <transformation>0 0 -0.005 0 0 0</transformation>
+            <collision_shape>
+                <geometry>
+                    <box>
+                        <size>100 100 0.01</size>
+                    </box>
+                </geometry>
+                <color>0.8 0.8 0.8</color>
+            </collision_shape>
             <visualization_shape>
                 <geometry>
                     <box>
-                        <size>10 10 0.01</size>
+                        <size>100 100 0.01</size>
                     </box>
                 </geometry>
                 <color>0.8 0.8 0.8</color>

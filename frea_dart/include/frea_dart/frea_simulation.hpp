@@ -6,8 +6,7 @@
 #include <dart/dart.hpp>
 #include <dart/gui/osg/osg.hpp>
 
-template<class T>
-void loadParam(const std::string &name, T &val);
+#include "frea_dart/robot_controller.hpp"
 
 class FreaSimulation {
 public:
@@ -38,14 +37,35 @@ public:
 
     /**
      * @brief Loads a skeleton from the ROS parameter server
+     *
+     * @param robot_description The param from which to load the skeleton
+     *
+     * @param ctrl If true then we spawn ROS Control stuff for this skele
      */
-    void load_skeleton_param(
-        const std::string robot_description="/robot_description");
+    void loadSkeletonParam(
+        const std::string robot_description="/robot_description",
+        bool ctrl=true);
 
     /**
      * @brief Loads a skeleton from a file
+     *
+     * @param filepath The file from which to load the skeleton
+     *
+     * @param ctrl If true then we spawn ROS Control stuff for this skele
      */
-    void load_skeleton_file(const std::string filepath);
+    void loadSkeletonFile(const std::string filepath, bool ctrl=true);
+
+    /**
+     * @brief Sets the pose of a skeleton
+     *
+     * @param name The name of the skeleton
+     *
+     * @param pose The pose (in the world frame) to set
+     *
+     * @returns true if it succeeded else false
+     */
+    bool setSkeletonPose(
+        const std::string name, const Eigen::Affine3d &pose);
 
 private:
     /**
@@ -59,23 +79,46 @@ private:
     /**
      * @brief Sets up the rendering window
      */
-    void setup_window();
+    void setupWindow();
+
+    /**
+     * @brief Set up ROS pub/subs
+     */
+    void setupPubSubs();
 
     /**
      * @brief Loads the world from ROS parameter configuration
      */
-    void load_world();
+    void loadWorld();
+    
+    /**
+     * @brief Checks if the simulation window has been closed
+     *
+     * @returns true if the window has been closed. false if it is open, or
+     *          if we are not rendering
+     */
+    bool windowClosed();
+
+    /**
+     * @brief Publishes the current simulation time
+     */
+    void publishTime();
 
     ros::NodeHandle nh_;
 
     dart::simulation::WorldPtr world_;
-    // Dart doesn't take a shared ptr :(
+    // Dart won't let me use unique_ptr :(
     dart::gui::osg::WorldNode *world_node_;
     std::unique_ptr<dart::gui::osg::Viewer> viewer_;
+
+    std::unique_ptr<RobotController> robot_ctrl_;
+
+    ros::Publisher clock_pub_;
 
     unsigned int timesteps_per_frame_;
     unsigned long long timestep_;
     bool render_;
+    ros::Time time_;
 };
 
 #endif // __FREA_SIMULATION_HPP__

@@ -36,8 +36,7 @@
         <visual>
             <origin xyz="0 0 0" rpy="0 0 1.57"/>
             <geometry>
-                <mesh filename="$(find frea_description)/meshes/head.stl"
-                      scale="0.001 0.001 0.001"/>
+                <mesh filename="$(find frea_description)/meshes/head.stl"/>
             </geometry>
         </visual>
 

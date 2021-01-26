@@ -23,8 +23,7 @@
         <visual>
             <origin xyz="0.0785 0 -0.0075" rpy="0 0 1.57"/>
             <geometry>
-                <mesh filename="$(find frea_description)/meshes/mouth.stl"
-                      scale="0.001 0.001 0.001"/>
+                <mesh filename="$(find frea_description)/meshes/mouth.stl"/>
             </geometry>
         </visual>
         <collision>

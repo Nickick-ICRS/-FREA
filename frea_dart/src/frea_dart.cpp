@@ -7,7 +7,11 @@ int main(int argc, char **argv) {
 
     FreaSimulation sim;
 
-    sim.load_skeleton_param();
+    sim.loadSkeletonParam();
+
+    Eigen::Affine3d af;
+    af = Eigen::Translation3d(0, 0, 1);
+    sim.setSkeletonPose("frea", af);
 
     sim.run();
 }

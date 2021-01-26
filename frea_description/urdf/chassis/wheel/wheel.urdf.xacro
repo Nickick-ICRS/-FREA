@@ -23,8 +23,7 @@
         <visual>
             <origin xyz="0 ${-mirror*0.021} 0" rpy="0 0 0"/>
             <geometry>
-                <mesh filename="$(find frea_description)/meshes/wheel.stl"
-                      scale="0.001 ${mirror*0.001} 0.001"/>
+                <mesh filename="$(find frea_description)/meshes/wheel.stl"/>
             </geometry>
         </visual>
 

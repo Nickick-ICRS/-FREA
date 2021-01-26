@@ -23,8 +23,7 @@
         <visual>
            <origin xyz="0 0.0025 0" rpy="1.57 -1.57 0"/>
            <geometry>
-                <mesh filename="$(find frea_description)/meshes/left_ear.stl"
-                      scale="0.001 0.001 0.001"/>
+                <mesh filename="$(find frea_description)/meshes/left_ear.stl"/>
             </geometry>
         </visual>
 

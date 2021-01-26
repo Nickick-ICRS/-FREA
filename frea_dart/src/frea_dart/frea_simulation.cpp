@@ -1,21 +1,20 @@
 #include "frea_dart/frea_simulation.hpp"
 
+#include "frea_dart/utilities/load_param.hpp"
+
 #include <dart/utils/urdf/urdf.hpp>
 #include <dart/utils/utils.hpp>
 
 #include <ros/callback_queue.h>
+#include <rosgraph_msgs/Clock.h>
 
-template<class T>
-void loadParam(const std::string &param_name, T &val) {
-    if(!ros::param::get(param_name, val)) {
-        ROS_WARN_STREAM(
-            "Failed to load '" << param_name << "'. Defaulting to " << val);
-    }
-}
+#include <chrono>
+#include <thread>
 
 FreaSimulation::FreaSimulation() {
-    load_world();
-    setup_window();
+    loadWorld();
+    setupWindow();
+    setupPubSubs();
     reset();
 }
 
@@ -25,7 +24,7 @@ FreaSimulation::~FreaSimulation() {
 //        delete world_node_;
 }
 
-void FreaSimulation::setup_window() {
+void FreaSimulation::setupWindow() {
     double width = 640;
     double height = 480;
     render_ = true;
@@ -41,13 +40,24 @@ void FreaSimulation::setup_window() {
     viewer_.reset(new dart::gui::osg::Viewer());
     viewer_->addWorldNode(world_node_);
     viewer_->setUpViewInWindow(0, 0, width, height);
-    osg::Vec3d eye(1000, 0, 1000);
-    osg::Vec3d center(0, 0, 0);
-    osg::Vec3d up(0.707, 0, 0.707);
-    viewer_->getCamera()->setViewMatrixAsLookAt(eye, center, up);
+
+    viewer_->realize();
+
+    osg::Vec3d eye(-3, 0, 1.8); // Eye position
+    osg::Vec3d center(0, 0, 0); // What we're looking at
+    osg::Vec3d up(0, 0, 1); // Up vector
+    viewer_->getCameraManipulator()->setHomePosition(eye, center, up);
+    // Tell the viewer to update the camera home position
+    viewer_->setCameraManipulator(viewer_->getCameraManipulator());
 }
 
-void FreaSimulation::load_skeleton_param(std::string robot_description) {
+void FreaSimulation::setupPubSubs() {
+    clock_pub_ = nh_.advertise<rosgraph_msgs::Clock>("/clock", 1);
+}
+
+void FreaSimulation::loadSkeletonParam(
+    std::string robot_description, bool ctrl)
+{
     std::string desc;
     loadParam(robot_description, desc);
 
@@ -63,10 +73,14 @@ void FreaSimulation::load_skeleton_param(std::string robot_description) {
         return;
     }
 
+    ROS_INFO_STREAM("Loaded skeleton '" << skele->getName() << "'");
     world_->addSkeleton(skele);
+
+    if(ctrl)
+        robot_ctrl_.reset(new RobotController(skele));
 }
 
-void FreaSimulation::load_skeleton_file(std::string filepath) {
+void FreaSimulation::loadSkeletonFile(std::string filepath, bool ctrl) {
     dart::utils::DartLoader loader;
     dart::dynamics::SkeletonPtr skele = loader.parseSkeleton(filepath);
 
@@ -76,10 +90,14 @@ void FreaSimulation::load_skeleton_file(std::string filepath) {
         return;
     }
 
+    ROS_INFO_STREAM("Loaded skeleton '" << skele->getName() << "'");
     world_->addSkeleton(skele);
+
+    if(ctrl)
+        robot_ctrl_.reset(new RobotController(skele));
 }
 
-void FreaSimulation::load_world() {
+void FreaSimulation::loadWorld() {
     std::string world_filepath;
     loadParam("/frea_dart/world/filepath", world_filepath);
 
@@ -120,22 +138,59 @@ void FreaSimulation::load_world() {
     }
 }
 
+bool FreaSimulation::windowClosed() {
+    if(!render_)
+        return false;
+
+    return !viewer_->isRealized();
+}
+
 void FreaSimulation::reset() {
     timestep_ = 0;
 }
 
 void FreaSimulation::step() {
-    timestep_++;
+    world_->step();
+
+    publishTime();
+
+    if(robot_ctrl_) {
+        // Reset if timestep is 0
+        if(timestep_ == 0)
+            robot_ctrl_->update(
+                time_, ros::Duration(world_->getTimeStep()), true);
+        else
+            robot_ctrl_->update(
+                time_, ros::Duration(world_->getTimeStep()), false);
+    }
 
     if(render_) {
         render();
     }
+
+    timestep_++;
 }
 
 void FreaSimulation::render() {
     if(timestep_ % timesteps_per_frame_ == 0) {
+        // Little hack to stop it from randomly crashing
+        if(viewer_->getCamera()->getViewMatrix().isNaN()) {
+            ROS_WARN("Resetting camera view matrix due to NaNs");
+            viewer_->getCamera()->setViewMatrix(osg::Matrix::identity());
+        }
         viewer_->frame();
     }
+}
+
+void FreaSimulation::publishTime() {
+    time_ += ros::Duration(world_->getTimeStep());
+
+    if(timestep_ == 0)
+        time_ = ros::Time(0);
+
+    rosgraph_msgs::Clock clock;
+    clock.clock = time_;
+    clock_pub_.publish(clock);
 }
 
 void FreaSimulation::run() {
@@ -145,5 +200,53 @@ void FreaSimulation::run() {
         // Handle ROS callbacks etc. Do not wait for new ones as we publish
         // the clock...
         q->callAvailable();
+
+        if(windowClosed())
+            return;
     }
+}
+
+bool FreaSimulation::setSkeletonPose(
+    const std::string name, const Eigen::Affine3d &pose)
+{
+    dart::dynamics::SkeletonPtr skele = world_->getSkeleton(name);
+
+    if(!skele) {
+        ROS_ERROR_STREAM("Skeleton '" << name << "' does not exist!");
+        return false;
+    }
+
+    // Assume the first joint is the connection to the world
+    dart::dynamics::JointPtr joint = skele->getJoint(0);
+
+    if(!joint) {
+        ROS_ERROR_STREAM(name << " has no joints!");
+        return false;
+    }
+    if(joint->getType() != "FreeJoint") {
+        ROS_ERROR_STREAM(
+            "Could not find FreeJoint between " << name
+            << " and the world. Joint " << joint->getName() << "'s type is "
+            << joint->getType());
+        return false;
+    }
+
+
+    joint->setPosition(3, pose.translation().x());
+    joint->setPosition(4, pose.translation().y());
+    joint->setPosition(5, pose.translation().z());
+
+    auto ea = pose.rotation().eulerAngles(0, 1, 2);
+
+    joint->setPosition(0, ea[0]);
+    joint->setPosition(1, ea[1]);
+    joint->setPosition(2, ea[2]);
+
+    ROS_INFO_STREAM(
+        "Set Joint " << joint->getName() << " to ["
+        << pose.translation().x() << ", " << pose.translation().y() << ", "
+        << pose.translation().z() << "], [" << ea[0] << ", " << ea[1]
+        << ", " << ea[2] << "]");
+
+    return true;
 }

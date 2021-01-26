@@ -14,4 +14,6 @@
   <depend>frea_msgs</depend>
   <depend>roscpp</depend>
   <depend>rospy</depend>
+  <depend>controller_manager</depend>
+  <depend>hardware_interface</depend>
 </package>

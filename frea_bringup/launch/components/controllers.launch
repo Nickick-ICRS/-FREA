@@ -6,16 +6,16 @@
     <node name="controller_spawner" pkg="controller_manager" type="spawner"
           args="
         /frea/controllers/state
-        /frea/controllers/position/left_ear_controller
-        /frea/controllers/position/right_ear_controller
-        /frea/controllers/position/mouth_controller
-        /frea/controllers/position/head_controller
-        /frea/controllers/position/lower_neck_controller
-        /frea/controllers/position/upper_neck_controller
-        /frea/controllers/position/upper_tail_controller
-        /frea/controllers/position/lower_tail_controller
-        /frea/controllers/velocity/left_wheel_controller
-        /frea/controllers/velocity/right_wheel_controller
+        /frea/controllers/position/left_ear_joint_controller
+        /frea/controllers/position/right_ear_joint_controller
+        /frea/controllers/position/mouth_joint_controller
+        /frea/controllers/position/head_joint_controller
+        /frea/controllers/position/lower_neck_joint_controller
+        /frea/controllers/position/upper_neck_joint_controller
+        /frea/controllers/position/upper_tail_joint_controller
+        /frea/controllers/position/lower_tail_joint_controller
+        /frea/controllers/velocity/left_wheel_joint_controller
+        /frea/controllers/velocity/right_wheel_joint_controller
                 "/>
     
     <!-- Robot state publisher so we can see all joints in TF -->
