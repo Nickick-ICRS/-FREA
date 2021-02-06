@@ -4,3 +4,10 @@ frea_dart:
         height: 960
         enable_rendering: true
         update_period: 20 # i.e. updates display once every 20 timesteps
+    robot:
+        parameter: "/robot_description"
+        X: 0
+        Y: 0
+        Z: 0.1
+    simulation:
+        steps_per_s: 1000

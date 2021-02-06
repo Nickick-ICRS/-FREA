@@ -48,6 +48,7 @@ Robot::Robot(const dart::dynamics::SkeletonPtr &skele) :skele_(skele) {
     pos_.reset(new double[num_jnts]);
     vel_.reset(new double[num_jnts]);
     eff_.reset(new double[num_jnts]);
+    jnt_ctrl_type_.reset(new ControlType[num_jnts]);
 
     std::string param_ns = "/" + skele->getName() + "/controllers/";
 
@@ -55,26 +56,26 @@ Robot::Robot(const dart::dynamics::SkeletonPtr &skele) :skele_(skele) {
         dart::dynamics::Joint *jnt, std::string type,
         ControlType default_type, size_t idx)
     {
+        // Find out which control type we're using
         if(type.substr(0, 20) == "position_controllers") {
-            jnt_ctrl_type_.push_back(ControlType::POSITION);
+            jnt_ctrl_type_[idx] = ControlType::POSITION;
         }
         else if(type.substr(0, 20) == "velocity_controllers") {
-            jnt_ctrl_type_.push_back(ControlType::VELOCITY);
+            jnt_ctrl_type_[idx] = ControlType::VELOCITY;
         }
         else if(type.substr(0, 18) == "effort_controllers") {
-            jnt_ctrl_type_.push_back(ControlType::EFFORT);
+            jnt_ctrl_type_[idx] = ControlType::EFFORT;
         }
         else {
             ROS_WARN_STREAM(
                 "Unknown controller type: " << type << " defaulting to "
                 << default_type);
-            jnt_ctrl_type_.push_back(default_type);
+            jnt_ctrl_type_[idx] = default_type;
         }
-        ROS_INFO_STREAM(
-            "Controlling " << jnt->getName() << " with "
-            << jnt_ctrl_type_.back());
+
+        // Now load the joint control interface
         hardware_interface::JointHandle jh;
-        switch(jnt_ctrl_type_.back()) {
+        switch(jnt_ctrl_type_[idx]) {
         case ControlType::POSITION:
             jh = hardware_interface::JointHandle(
                 jnt_state_interface_.getHandle(jnt->getName()), &cmd_[idx]);

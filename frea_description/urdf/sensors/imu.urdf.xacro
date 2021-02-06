@@ -2,7 +2,7 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
 <xacro:macro name="imu" params="parent name xyz">
-    <joint name="${name}_imu_sensor" type="fixed">
+    <joint name="${name}_sensor" type="fixed">
         <origin xyz="${xyz}" rpy="0 0 0"/>
         <parent link="${parent}"/>
         <child link="${name}_link"/>

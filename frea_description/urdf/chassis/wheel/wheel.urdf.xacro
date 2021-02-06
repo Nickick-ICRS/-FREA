@@ -26,7 +26,6 @@
                 <mesh filename="$(find frea_description)/meshes/wheel.stl"/>
             </geometry>
         </visual>
-
         <collision>
             <origin xyz="0 0 0" rpy="1.57 0 0"/>
             <geometry>

@@ -87,14 +87,14 @@ private:
     std::shared_ptr<double[]> eff_;
 
     /**
+     * @brief What control type are we using for this joint?
+     */
+    std::shared_ptr<ControlType[]> jnt_ctrl_type_;
+
+    /**
      * @brief Stores joint index for each joint we care about
      */
     std::vector<size_t> jnt_idx_arr_;
-
-    /**
-     * @brief What control type are we using for this joint?
-     */
-    std::vector<ControlType> jnt_ctrl_type_;
 
     /**
      * @brief ids of any joints to ignore when reading/writing

@@ -87,6 +87,11 @@ private:
     void setupPubSubs();
 
     /**
+     * @brief Loads general simulation parameters
+     */
+    void loadGeneralParams();
+
+    /**
      * @brief Loads the world from ROS parameter configuration
      */
     void loadWorld();
@@ -122,6 +127,7 @@ private:
 
     unsigned int timesteps_per_frame_;
     unsigned long long timestep_;
+    std::chrono::nanoseconds target_step_dur_;
     bool render_;
     ros::Time time_;
 

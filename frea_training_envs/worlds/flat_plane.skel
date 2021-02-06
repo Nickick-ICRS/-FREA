@@ -3,7 +3,7 @@
 
 <world name="flat plane">
     <physics>
-        <time_step>0.01</time_step>
+        <time_step>0.001</time_step>
         <gravity>0 0 -9.81</gravity>
         <!-- dart doesn't support cylinders :/ and I cba to get bullet to
              work-->

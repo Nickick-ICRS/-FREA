@@ -11,6 +11,7 @@
 #include <thread>
 
 FreaSimulation::FreaSimulation() {
+    loadGeneralParams();
     loadWorld();
     setupWindow();
     setupPubSubs();
@@ -19,6 +20,18 @@ FreaSimulation::FreaSimulation() {
 
 FreaSimulation::~FreaSimulation() {
     // dtor
+}
+
+void FreaSimulation::loadGeneralParams() {
+    double steps_per_s = 1000;
+    loadParam("/frea_dart/simulation/steps_per_s", steps_per_s);
+    if(steps_per_s > 0) {
+    target_step_dur_ =
+        std::chrono::nanoseconds((long long)(1e9 / steps_per_s));
+    }
+    else {
+        target_step_dur_ = std::chrono::nanoseconds(0);
+    }
 }
 
 void FreaSimulation::setupWindow() {
@@ -73,6 +86,8 @@ void FreaSimulation::loadSkeletonParam(
         return;
     }
 
+    skele->setSelfCollisionCheck(false);
+
     ROS_INFO_STREAM("Loaded skeleton '" << skele->getName() << "'");
     world_->addSkeleton(skele);
 
@@ -89,6 +104,8 @@ void FreaSimulation::loadSkeletonFile(std::string filepath, bool ctrl) {
             "Failed to load skeleton from " << filepath);
         return;
     }
+
+    skele->setSelfCollisionCheck(false);
 
     ROS_INFO_STREAM("Loaded skeleton '" << skele->getName() << "'");
     world_->addSkeleton(skele);
@@ -208,10 +225,14 @@ void FreaSimulation::publishTime() {
 
 void FreaSimulation::run() {
     while(ros::ok()) {
+        auto start = std::chrono::high_resolution_clock::now();
         step();
 
         if(windowClosed())
             return;
+
+        // Wait until the time has elapsed before the next frame update
+        while(std::chrono::high_resolution_clock::now() - start < target_step_dur_);
     }
 }
 
