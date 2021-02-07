@@ -6,6 +6,7 @@ from tf.transformations import euler_from_quaternion
 from gym import spaces
 
 from geometry_msgs.msg import Vector3, Twist
+from frea_dart_msgs.srv import GetBodyState
 
 from frea_training_envs.robot_envs.frea_env_dart import FreaEnv
 from frea_training_envs.utilities.motion_control_training_rewards \
@@ -27,7 +28,7 @@ class FreaMotionControlEnv(FreaEnv):
         4: upper_tail_position  (-1:1, scaled to the joint limits)
         5: lower_tail_position  (-1:1, scaled to the joint limits)
         """
-        FreaEnv.__init__(self)
+        super(FreaMotionControlEnv, self).__init__()
 
         num_actions = 6
 
@@ -146,6 +147,8 @@ class FreaMotionControlEnv(FreaEnv):
             "OBSERVATION SPACE TYPE ==> " + str(self.observation_space))
 
         self._rc = RewardCalculator()
+        self.get_exact_link_state = rospy.ServiceProxy(
+            '/frea_dart/get_body_state', GetBodyState)
 
     def prepare_for_next_iteration(self):
         self.target_head_position, self.head_pos_tol = \
@@ -204,6 +207,7 @@ class FreaMotionControlEnv(FreaEnv):
 
     def _init_env_variables(self):
         self.cumulated_reward = 0
+        self.timestep = 0
         self.prepare_for_next_iteration()
 
     def _set_action(self, action):
@@ -260,8 +264,19 @@ class FreaMotionControlEnv(FreaEnv):
 
     def _get_obs(self):
         # Get the observations we care about
+        self.timestep += 1
+        
         js = self.get_joints()
+        imu = self.get_imu()
+        
+        quat = (
+            imu.orientation.x,
+            imu.orientation.y,
+            imu.orientation.z,
+            imu.orientation.w)
 
+        imu_pitch = euler_from_quaternion(quat)[1]
+        
         obs = np.array([
             # First, joint velocities
             self.get_joint_vel(js, 'left_wheel_joint'),
@@ -276,7 +291,7 @@ class FreaMotionControlEnv(FreaEnv):
             self.get_joint_pos(js, 'upper_tail_joint'),
             self.get_joint_pos(js, 'lower_tail_joint'),
             # Third, IMU pitch
-            self.get_joint_pos(js, 'chassis_joint'),
+            imu_pitch,
             # Fourth, cmd_vel
             self.target_cmd_vel.linear.x,
             self.target_cmd_vel.angular.z,
@@ -308,14 +323,13 @@ class FreaMotionControlEnv(FreaEnv):
         return False
 
     def _compute_reward(self, observations, done):
-        self._rc.calculate_energy_reward(self.get_joints())
-        chassis_state = self.get_exact_body_state("fixed_base_link")
-        head_state = self.get_exact_body_state("head_link")
+        exact_chassis_state = self.get_exact_chassis_state()
+        exact_head_state = self.get_exact_head_state()
         rew = self._rc.calculate_reward(
             self.target_cmd_vel, self.cmd_vel_tol,
             self.target_head_position, self.head_pos_tol,
             self.target_head_pitch, self.head_pitch_tol,
-            chassis_state, head_state)
+            exact_chassis_state, exact_head_state)
 
         rospy.logdebug("################")
         rospy.logdebug("Reward: " + str(rew))
@@ -332,3 +346,13 @@ class FreaMotionControlEnv(FreaEnv):
         for i in range(len(joint_state.name)):
             if joint_state.name[i] == joint:
                 return joint_state.position[i]
+
+    def get_exact_chassis_state(self):
+        link_state = self.get_exact_link_state(
+            "frea", "head_link", "world")
+        return link_state
+
+    def get_exact_head_state(self):
+        link_state = self.get_exact_link_state(
+            "frea", "head_link", "world")
+        return link_state

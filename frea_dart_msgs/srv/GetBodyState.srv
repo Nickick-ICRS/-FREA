@@ -1,0 +1,9 @@
+string robot_name
+string body_name
+string reference_frame
+---
+geometry_msgs/Pose pose
+geometry_msgs/Twist twist
+
+bool success
+string status_message

@@ -28,12 +28,22 @@ include_directories(
     ${catkin_INCLUDE_DIRS}
 )
 
+add_library(${PROJECT_NAME}_plugins
+    src/frea_dart/plugins/plugin_manager.cpp
+    src/frea_dart/plugins/adjustable_weight.cpp
+    src/frea_dart/plugins/contact_sensor.cpp
+    src/frea_dart/plugins/imu_sensor.cpp
+)
+target_link_libraries(${PROJECT_NAME}_plugins
+    ${catkin_LIBRARIES} ${DART_LIBRARIES} ${OPENSCENEGRAPH_LIBRARIES})
+
 add_library(${PROJECT_NAME}_frea_simulation
     src/frea_dart/robot.cpp
     src/frea_dart/robot_controller.cpp
     src/frea_dart/frea_simulation.cpp
 )
 target_link_libraries(${PROJECT_NAME}_frea_simulation
+    ${PROJECT_NAME}_plugins
     ${catkin_LIBRARIES} ${DART_LIBRARIES} ${OPENSCENEGRAPH_LIBRARIES})
 
 add_executable(frea_dart

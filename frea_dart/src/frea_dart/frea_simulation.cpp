@@ -34,6 +34,9 @@ void FreaSimulation::loadGeneralParams() {
     else {
         target_step_dur_ = std::chrono::nanoseconds(0);
     }
+
+    paused_ = false;
+    loadParam("/frea_dart/simulation/start_paused", paused_);
 }
 
 void FreaSimulation::setupWindow() {
@@ -83,6 +86,10 @@ void FreaSimulation::setupServices() {
         "/frea_dart/reset", &FreaSimulation::resetService, this);
     spawn_robot_service_ = nh_.advertiseService(
         "/frea_dart/spawn_robot", &FreaSimulation::spawnRobotService, this);
+    get_body_state_service_ = nh_.advertiseService(
+        "/frea_dart/get_body_state",
+        &FreaSimulation::getBodyStateService,
+        this);
     set_robot_state_service_ = nh_.advertiseService(
         "/frea_dart/set_robot_state",
         &FreaSimulation::setRobotStateService,
@@ -118,6 +125,8 @@ bool FreaSimulation::loadSkeletonParam(
 
     if(ctrl)
         robot_ctrl_.reset(new RobotController(skele));
+
+    plugin_manager_.loadPlugins(world_, skele);
     return true;
 }
 
@@ -194,6 +203,7 @@ void FreaSimulation::reset(bool reset_time, bool reset_robots) {
     if(reset_time)
         timestep_ = 0;
 
+    bool prev_paused = paused_;
     paused_ = true;
 
     std::this_thread::sleep_for(target_step_dur_);
@@ -218,11 +228,12 @@ void FreaSimulation::reset(bool reset_time, bool reset_robots) {
             robot_ctrl_->update(
                 time_, ros::Duration(world_->getTimeStep()), true);
         }
+        plugin_manager_.update(0, true);
     }
 
     std::this_thread::sleep_for(target_step_dur_);
 
-    paused_ = false;
+    paused_ = prev_paused;
 }
 
 void FreaSimulation::step() {
@@ -243,6 +254,10 @@ void FreaSimulation::step() {
             robot_ctrl_->update(
                 time_, ros::Duration(world_->getTimeStep()), false);
     }
+    if(timestep_ == 0)
+        plugin_manager_.update(world_->getTimeStep(), true);
+    else
+        plugin_manager_.update(world_->getTimeStep(), false);
 
     timestep_++;
 }
@@ -421,6 +436,64 @@ bool FreaSimulation::spawnRobotService(
             ". Does it match the robot name in " + req.urdf_parameter + "?";
         return false;
     }
+
+    resp.success = true;
+    return true;
+}
+
+bool FreaSimulation::getBodyStateService(
+    frea_dart_msgs::GetBodyState::Request &req,
+    frea_dart_msgs::GetBodyState::Response &resp)
+{
+    dart::dynamics::SkeletonPtr skele = world_->getSkeleton(req.robot_name);
+    if(!skele) {
+        resp.success = false;
+        ROS_ERROR_STREAM(
+            "Skeleton '" << req.robot_name << "' does not exist!");
+        resp.status_message =
+            "Failed to get state of " + req.robot_name + " does it exist?";
+        return false;
+    }
+
+    dart::dynamics::BodyNodePtr body = skele->getBodyNode(req.body_name);
+    if(!body) {
+        resp.success = false;
+        ROS_ERROR_STREAM(
+            "Body '" << req.body_name << "' does not exist in robot "
+            << req.robot_name << "!");
+        resp.status_message =
+            "Failed to get state of " + req.robot_name + "::"
+            + req.body_name + " does it exist?";
+        return false;
+    }
+
+    dart::dynamics::Frame* frame;
+    if(req.reference_frame == "world") {
+        frame = dart::dynamics::Frame::World();
+    }
+    else {
+        frame = world_->getSimpleFrame(req.reference_frame).get();
+    }
+    if(!frame) {
+        resp.success = false;
+        ROS_ERROR_STREAM(
+            "Frame '" << req.reference_frame << "' does not exist!");
+        resp.status_message =
+            "Failed to get frame " + req.reference_frame
+            + " does it exist?";
+        return false;
+    }
+
+    Eigen::Affine3d pose = body->getTransform(frame);
+    tf::poseEigenToMsg(pose, resp.pose);
+
+    Eigen::Vector6d vels = body->getSpatialVelocity(frame, frame);
+    resp.twist.angular.x = vels[0];
+    resp.twist.angular.y = vels[1];
+    resp.twist.angular.z = vels[2];
+    resp.twist.linear.x = vels[3];
+    resp.twist.linear.y = vels[4];
+    resp.twist.linear.z = vels[5];
 
     resp.success = true;
     return true;

@@ -18,7 +18,7 @@
     <node name="spawn_robot" type="spawn_robot" pkg="frea_dart">
         <param name="X" value="0"/>
         <param name="Y" value="0"/>
-        <param name="Z" value="0.12"/>
+        <param name="Z" value="0.105"/>
         <param name="r" value="0"/>
         <param name="p" value="0"/>
         <param name="y" value="0"/>

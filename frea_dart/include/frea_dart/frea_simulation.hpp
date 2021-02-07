@@ -5,6 +5,7 @@
 
 #include <std_srvs/Empty.h>
 #include <frea_dart_msgs/SpawnRobot.h>
+#include <frea_dart_msgs/GetBodyState.h>
 #include <frea_dart_msgs/GetRobotState.h>
 #include <frea_dart_msgs/SetRobotState.h>
 
@@ -12,6 +13,7 @@
 #include <dart/gui/osg/osg.hpp>
 
 #include "frea_dart/robot_controller.hpp"
+#include "frea_dart/plugins/plugin_manager.hpp"
 
 class FreaSimulation {
 public:
@@ -178,6 +180,13 @@ private:
         frea_dart_msgs::SpawnRobot::Response &resp);
 
     /**
+     * @brief ROS service to get the physical state of a robot
+     */
+    bool getBodyStateService(
+        frea_dart_msgs::GetBodyState::Request &req,
+        frea_dart_msgs::GetBodyState::Response &resp);
+
+    /**
      * @brief ROS service to set the physical state of a robot
      */
     bool setRobotStateService(
@@ -198,8 +207,9 @@ private:
     ros::ServiceServer step_service_;
     ros::ServiceServer reset_service_;
     ros::ServiceServer spawn_robot_service_;
-    ros::ServiceServer set_robot_state_service_;
+    ros::ServiceServer get_body_state_service_;
     ros::ServiceServer get_robot_state_service_;
+    ros::ServiceServer set_robot_state_service_;
 
     dart::simulation::WorldPtr world_;
     // Dart won't let me use unique_ptr :(
@@ -207,6 +217,7 @@ private:
     std::unique_ptr<dart::gui::osg::Viewer> viewer_;
 
     std::unique_ptr<RobotController> robot_ctrl_;
+    PluginManager plugin_manager_;
 
     ros::Publisher clock_pub_;
 

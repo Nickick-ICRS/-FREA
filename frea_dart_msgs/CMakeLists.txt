@@ -8,17 +8,19 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
-## Generate messages in the 'msg' folder
-#add_message_files(
-#  FILES
-#)
+# Generate messages in the 'msg' folder
+add_message_files(
+  FILES
+  Contact.msg
+)
 
 # Generate services in the 'srv' folder
 add_service_files(
   FILES
-  SpawnRobot.srv
+  GetBodyState.srv
   GetRobotState.srv
   SetRobotState.srv
+  SpawnRobot.srv
 )
 
 generate_messages(

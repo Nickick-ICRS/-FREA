@@ -1,11 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import os
 import copy
 import gym
 import rospy
-import rospkg
-import tf
 import numpy as np
 from gym.utils import seeding
 
@@ -13,162 +10,118 @@ from sensor_msgs.msg import JointState, Imu
 from std_msgs.msg import Float32, Float64
 from rosgraph_msgs.msg import Clock
 from frea_msgs.msg import Contact
-from gazebo_msgs.msg import LinkState
 from urdf_parser_py.urdf import URDF
 
-import dartpy as dart
+from frea_training_envs.sim_envs import dart_env
 
-class FreaEnv(gym.Env):
+class FreaEnv(dart_env.DartEnv):
     def __init__(self):
-        gym.Env.__init__(self)
-        
-        world_path = os.path.join(
-            rospkg.RosPack().get_path("frea_training_envs"),
-            "worlds/flat_plane.skel")
-
-        self.world = dart.utils.SkelParser.readWorld(world_path)
-
-        urdf_path = os.path.join(
-            rospkg.RosPack().get_path("frea_description"),
-            "urdf/generated/frea_dart.urdf")
-
-        skeleton = dart.utils.DartLoader().parseSkeleton(urdf_path)
-
-        self.world.addSkeleton(skeleton)
-
-        self.world.setGravity([0, 0, -9.8])
-        self.world.setTimeStep(0.01)
-
-        self.collision_detector = \
-            self.world.getConstraintSolver().getCollisionDetector()
-
-        self.frea = self.world.getSkeleton('frea')
-        self.frea.setPosition(2, 0.1)
-        self.frea_joints = self.frea.getJoints()
 
         self._contacts = []
+
+        # ==================== SET UP ROS PUBLISHERS ====================
+        self.publishers= []
+
+        self._left_wheel_pub = rospy.Publisher(
+            '/frea/controllers/velocity/left_wheel_joint_controller/command',
+            Float64, queue_size=1)
+        self._right_wheel_pub = rospy.Publisher(
+            '/frea/controllers/velocity/right_wheel_joint_controller/command',
+            Float64, queue_size=1)
+        self._lower_neck_pub = rospy.Publisher(
+            'frea/controllers/position/lower_neck_joint_controller/command',
+            Float64, queue_size=1)
+        self._upper_neck_pub = rospy.Publisher(
+            'frea/controllers/position/upper_neck_joint_controller/command',
+            Float64, queue_size=1)
+        self._upper_tail_pub = rospy.Publisher(
+            'frea/controllers/position/upper_tail_joint_controller/command',
+            Float64, queue_size=1)
+        self._lower_tail_pub = rospy.Publisher(
+            'frea/controllers/position/lower_tail_joint_controller/command',
+            Float64, queue_size=1)
+        self._head_pub = rospy.Publisher(
+            'frea/controllers/position/head_joint_controller/command',
+            Float64, queue_size=1)
+        self._mouth_pub = rospy.Publisher(
+            'frea/controllers/position/mouth_joint_controller/command',
+            Float64, queue_size=1)
+        self._left_ear_pub = rospy.Publisher(
+            'frea/controllers/position/left_ear_joint_controller/command',
+            Float64, queue_size=1)
+        self._right_ear_pub = rospy.Publisher(
+            'frea/controllers/position/right_ear_joint_controller/command',
+            Float64, queue_size=1)
+
+        self.publishers.append(self._left_wheel_pub)
+        self.publishers.append(self._right_wheel_pub)
+        self.publishers.append(self._lower_neck_pub)
+        self.publishers.append(self._upper_neck_pub)
+        self.publishers.append(self._upper_tail_pub)
+        self.publishers.append(self._lower_tail_pub)
+        self.publishers.append(self._head_pub)
+        self.publishers.append(self._mouth_pub)
+        self.publishers.append(self._left_ear_pub)
+        self.publishers.append(self._right_ear_pub)
+
+        self._head_weight_pub = rospy.Publisher(
+            '/adjust_weight/head', Float32, queue_size=1)
+        self._tail_weight_pub = rospy.Publisher(
+            '/adjust_weight/tail', Float32, queue_size=1)
+
+        rospy.Subscriber('/joint_states', JointState, self.joints_callback)
+        rospy.Subscriber('/imu/data', Imu, self.imu_callback)
+        rospy.Subscriber('/contacts', Contact, self.contact_callback)
+
+        # ==================== SET UP FOR SUPER CLASS ====================
+
+        self.controllers_list = [
+            '/frea/controllers/state',
+            '/frea/controllers/position/left_ear_controller',
+            '/frea/controllers/position/right_ear_controller',
+            '/frea/controllers/position/mouth_controller',
+            '/frea/controllers/position/head_controller',
+            '/frea/controllers/position/lower_neck_controller',
+            '/frea/controllers/position/upper_neck_controller',
+            '/frea/controllers/position/upper_tail_controller',
+            '/frea/controllers/position/lower_tail_controller',
+            '/frea/controllers/velocity/left_wheel_controller',
+            '/frea/controllers/velocity/right_wheel_controller']
+
+        self.robot_name_space = ''
+        self.reset_controls = True
 
         self._seed()
         self.steps_beyond_done = None
 
         self._urdf = URDF.from_parameter_server('/robot_description')
 
-        self._joint_state_publisher = rospy.Publisher(
-            '/joint_states', JointState, queue_size=2)
+        super(FreaEnv, self).__init__(
+            controllers_list=self.controllers_list,
+            robot_name_space=self.robot_name_space,
+            reset_controls=self.reset_controls)
 
-        self._clock_publisher = rospy.Publisher(
-            '/clock', Clock, queue_size=1)
-
-        self._contact_publisher = rospy.Publisher(
-            '/contacts', Contact, queue_size=100)
-
-        self.setup_visualisation()
+        # Unpause simulator so we can check topics etc.
+        self.simulator.unpauseSim()
+        self._check_all_systems_ready()
+        self._check_all_publishers_ready()
+        self.simulator.pauseSim()
 
         rospy.loginfo("Finished FreaEnv INIT")
 
-    def setup_visualisation(self):
-        node = dart.gui.osg.WorldNode(self.world)
+    def joints_callback(self, data):
+        self.joints = data
 
-        self.viewer = dart.gui.glut.SimWindow() #dart.gui.osg.Viewer()
-        self.viewer.setWorld(self.world)
-        glutInit()
-        self.viewer.initWindow(640, 480, "frea")
-        #self.viewer.addWorldNode(node)
+    def imu_callback(self, data):
+        self.imu = data
 
-        #grid = dart.gui.osg.GridVisual()
-        #grid.setPlaneType(dart.gui.osg.GridVisual.PlaneType.XY)
-        #grid.setOffset([0, 0, 0])
-        #self.viewer.addAttachment(grid)
-
-        #self.viewer.setUpViewInWindow(0, 0, 640, 480)
-        #self.viewer.setCameraHomePosition([8, -8, 4],
-        #                                  [0, 0, -0.25],
-        #                                  [0, 0, 0.5])
-        
-        self._frame_cnt = 0
-        self._frame_ticks = 15
-
-    def visualise(self):
-        if self._frame_cnt % self._frame_ticks == 0:
-            #self.viewer.frame() Need to wrap the C++ code first...
-            self._frame_cnt = 0
-        self._frame_cnt += 1
-
-    def reset(self):
-        self._simulation_reset()
-        self._set_init_pose()
-        self._init_env_variables()
-        self._update_sensor_readings()
-        self._publish_sensor_readings()
-        return self._get_obs()
-
-    def step(self, action):
-        self.timestep += 1
-        self._set_action(action)
-        self.world.step()
-        self._update_sensor_readings()
-        self._publish_sensor_readings()
-        obs = self._get_obs()
-        done = self._is_done(obs)
-        reward = self._compute_reward(obs, done)
-        info = {}
-
-        self.visualise()
-
-        return obs, reward, done, info
-
-    def _read_joint_states(self):
-
-        names = []
-        positions = []
-        velocities = []
-        efforts = []
-
-        for joint in self.frea_joints:
-            if joint.getNumDofs() and joint.getName() != "world_frea":
-                names.append(joint.getName())
-                positions.append(joint.getPosition(0))
-                velocities.append(joint.getVelocity(0))
-                efforts.append(joint.getForce(0))
-
-        self.joints = JointState()
-        self.joints.name = names
-        self.joints.position = positions
-        self.joints.velocity = velocities
-        self.joints.effort = efforts
-
-    def _read_contacts(self):
-        self._contacts = []
-        res = self.collision_detector.getLastCollisionResult()
-        contacts = res.getContacts()
-        for contact in contacts:
-            o1 = contact.collisionObject1
-            o2 = contact.collisionObject2
-            if (contact.bodyNode1.lock().getSkeleton() == self.frea or
-                contact.bodyNode2.lock().getSkeleton() == self.frea):
-                c = Contact()
-                c.object1 = ""
-                c.object2 = ""
-                self._contacts.append(c)
-
-    def _publish_sensor_readings(self):
-        clock = Clock()
-        clock.clock = rospy.Time(self.world.getTimeStep() * self.timestep)
-        self._clock_publisher.publish(clock)
-
-        self.joints.header.stamp = clock.clock
-        self._joint_state_publisher.publish(self.joints)
-
-        for contact in self._contacts:
-            self._contact_publisher.publish(contact)
-
-    def _update_sensor_readings(self):
-        self._read_joint_states()
-        self._read_contacts()
+    def contact_callback(self, data):
+        self._contacts.append(data)
 
     def _seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
+            
 
     # RobotEnv methods
 
@@ -181,21 +134,70 @@ class FreaEnv(gym.Env):
         self.joints = None
         self.imu = None
 
-    def _simulation_reset(self):
-        self.world.reset()
-        self.timestep = 0
+    def _check_all_publishers_ready(self):
+        rate = rospy.Rate(1)
+        all_pubs = []
+        for pub in self.publishers:
+            all_pubs.append(pub)
+        all_pubs.append(self._head_weight_pub)
+        all_pubs.append(self._tail_weight_pub)
+        pub_num = 0
+        for pub in all_pubs:
+            while(pub.get_num_connections() == 0 and not rospy.is_shutdown()):
+                rospy.logerr(
+                    "No subscribers to '" + pub.resolved_name +
+                    "' yet. Will keep trying.")
+                try:
+                    rate.sleep()
+                except rospy.ROSInterruptException:
+                    pass
+            rospy.loginfo("'" + pub.resolved_name + "' connected")
+            pub_num += 1
 
-        self.frea.resetPositions()
-        self.frea.resetVelocities()
-        self.frea.resetAccelerations()
+        rospy.loginfo("All publishers READY")
+
+    def _check_all_systems_ready(self, init=True):
+        self.base_position = None
+        while self.base_position is None and not rospy.is_shutdown():
+            try:
+                self.base_position = rospy.wait_for_message(
+                    "/joint_states", JointState, timeout=1.0)
+                rospy.logdebug(
+                    "'/joint_states' READY => "
+                    + str(self.base_position))
+                if init:
+                    # Check sensors are at initial values
+                    position_ok = all(
+                        abs(i) <= 1e-2 for i in self.base_position.position)
+                    velocity_ok = all(
+                        abs(i) <= 1e-2 for i in self.base_position.velocity)
+                    ok = position_ok and velocity_ok
+                    rospy.loginfo("Checking init values Ok => " + str(ok))
+            except Exception as e:
+                rospy.logerr(e)
+                rospy.logerr("'/joint_states' NOT READY yet, will retry.")
+
+        rospy.loginfo("ALL SYSTEMS READY")
 
     def move_joints(self, joints_array):
         for i in range(len(joints_array)):
             cmd = Float64()
             cmd.data = joints_array[i]
+            self.publishers[i].publish(cmd)
 
     def set_joints(self, joints_array):
         raise NotImplementedError()
+
+    def get_clock_time(self):
+        self.clock_time = None
+        while self.clock_time is None and not rospy.is_shutdown():
+            try:
+                self.clock_time = rospy.wait_for_message(
+                    "/clock", Clock, timeout=1.0)
+                rospy.loginfo("'/clock' READY => " + str(self.clock_time))
+            except:
+                rospy.logerr("Waiting for '/clock' to come online")
+        return self.clock_time
 
     # Methods that the TrainingEnvironment will need to define
     # because they will be used in RobotGazeboEnv GrandParentClass
@@ -231,36 +233,20 @@ class FreaEnv(gym.Env):
     def get_joints(self):
         return self.joints
 
+    def get_imu(self):
+        return self.imu
+
     def get_contacts(self):
-        return self._contacts
+        c = copy.deepcopy(self._contacts)
+        self._contacts = []
+        return c
 
     def set_head_mass(self, mass_kg):
-        self.frea.getBodyNode("head_weight_link").setMass(mass_kg)
+        msg = Float32()
+        msg.data = mass_kg
+        self._head_weight_pub.publish(msg)
 
     def set_tail_mass(self, mass_kg):
-        self.frea.getBodyNode("tail_weight_link").setMass(mass_kg)
-
-    def get_exact_body_state(self, body_name):
-        body = self.frea.getBodyNode(body_name)
-        trans = body.getWorldTransform()
-        lin = body.getLinearVelocity()
-        ang = body.getAngularVelocity()
-        state = LinkState()
-        state.pose.position.x = trans.translation()[0]
-        state.pose.position.y = trans.translation()[1]
-        state.pose.position.z = trans.translation()[2]
-        R = np.zeros((4, 4))
-        R[0:3, 0:3] = trans.rotation()
-        R[3, 3] = 1
-        q = tf.transformations.quaternion_from_matrix(R)
-        state.pose.orientation.x = q[0]
-        state.pose.orientation.y = q[1]
-        state.pose.orientation.z = q[2]
-        state.pose.orientation.w = q[3]
-        state.twist.linear.x = lin[0]
-        state.twist.linear.y = lin[1]
-        state.twist.linear.z = lin[2]
-        state.twist.angular.x = ang[0]
-        state.twist.angular.y = ang[1]
-        state.twist.angular.z = ang[2]
-        return state
+        msg = Float32()
+        msg.data = mass_kg
+        self._tail_weight_pub.publish(msg)
