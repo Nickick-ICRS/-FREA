@@ -1,0 +1,12 @@
+# Name of the robot to set the state of
+string robot_name
+
+geometry_msgs/Pose pose
+# Do we update the state that the simulation resets to?
+bool update_initial_state
+
+# Optional vector of joint states
+sensor_msgs/JointState joints
+---
+bool success
+string status_message

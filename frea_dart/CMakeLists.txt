@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
     rospy
     controller_manager
     hardware_interface
+    eigen_conversions
 )
 find_package(DART 6.8.2 REQUIRED COMPONENTS
     gui
@@ -18,7 +19,7 @@ find_package(DART 6.8.2 REQUIRED COMPONENTS
 find_package(Eigen3 REQUIRED)
 
 catkin_package(
-    CATKIN_DEPENDS frea_msgs roscpp rospy
+    CATKIN_DEPENDS frea_msgs roscpp rospy controller_manager hardware_interface eigen_conversions
     DEPENDS DART
 )
 

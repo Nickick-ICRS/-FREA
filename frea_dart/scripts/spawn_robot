@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+
+import rospy
+import tf.transformations
+
+from frea_dart_msgs.srv import SpawnRobotRequest, SpawnRobot
+
+
+def main():
+    rospy.init_node("robot_spawner")
+
+    r = rospy.get_param('~r', 0)
+    p = rospy.get_param('~p', 0)
+    y = rospy.get_param('~y', 0)
+
+    q = tf.transformations.quaternion_from_euler(r, p, y)
+
+    req = SpawnRobotRequest()
+
+    req.model_name = rospy.get_param('~robot_name')
+    req.urdf_parameter = rospy.get_param(
+        '~robot_description', '/robot_description')
+    req.initial_pose.position.x = rospy.get_param('~X', 0)
+    req.initial_pose.position.y = rospy.get_param('~Y', 0)
+    req.initial_pose.position.z = rospy.get_param('~Z', 0)
+
+    req.initial_pose.orientation.x = q[0]
+    req.initial_pose.orientation.y = q[1]
+    req.initial_pose.orientation.z = q[2]
+    req.initial_pose.orientation.w = q[3]
+
+    rospy.wait_for_service('/frea_dart/spawn_robot')
+    service = rospy.ServiceProxy('/frea_dart/spawn_robot', SpawnRobot)
+    resp = service(req)
+
+    if not resp.success:
+        rospy.logerr(
+            "Spawn robot failed with error: " + resp.status_message)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except rospy.ROSInterruptException:
+        pass

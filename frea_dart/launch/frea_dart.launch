@@ -13,6 +13,16 @@
 
     <param name="/use_sim_time" value="true"/>
 
-    <node name="frea_simulation" type="frea_dart" pkg="frea_dart"
+    <node name="frea_dart" type="frea_dart" pkg="frea_dart"
           output="screen"/>
+    <node name="spawn_robot" type="spawn_robot" pkg="frea_dart">
+        <param name="X" value="0"/>
+        <param name="Y" value="0"/>
+        <param name="Z" value="0.12"/>
+        <param name="r" value="0"/>
+        <param name="p" value="0"/>
+        <param name="y" value="0"/>
+        <param name="robot_name" value="frea"/>
+        <param name="robot_description" value="/robot_description"/>
+    </node>
 </launch>

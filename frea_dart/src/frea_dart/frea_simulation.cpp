@@ -6,6 +6,7 @@
 #include <dart/utils/utils.hpp>
 
 #include <rosgraph_msgs/Clock.h>
+#include <eigen_conversions/eigen_msg.h>
 
 #include <chrono>
 #include <thread>
@@ -15,6 +16,7 @@ FreaSimulation::FreaSimulation() {
     loadWorld();
     setupWindow();
     setupPubSubs();
+    setupServices();
     reset();
 }
 
@@ -38,13 +40,14 @@ void FreaSimulation::setupWindow() {
     double width = 640;
     double height = 480;
     render_ = true;
-    int timesteps_per_frame = 20;
+    double fps = 30;
+    last_render_update_ = std::chrono::high_resolution_clock::now();
     
     loadParam("/frea_dart/display/width", width);
     loadParam("/frea_dart/display/height", height);
     loadParam("/frea_dart/display/enable_rendering", render_);
-    loadParam("/frea_dart/display/update_period", timesteps_per_frame);
-    timesteps_per_frame_ = timesteps_per_frame;
+    loadParam("/frea_dart/display/fps", fps);
+    render_period_ = std::chrono::milliseconds((long)(1e3 / fps));
 
     world_node_ = new dart::gui::osg::WorldNode(world_);
     viewer_.reset(new dart::gui::osg::Viewer());
@@ -66,15 +69,37 @@ void FreaSimulation::setupPubSubs() {
 
     // Set up ROS spinner with 4 threads
     spinner_.reset(new ros::AsyncSpinner(4));
+    spinner_->start();
 }
 
-void FreaSimulation::loadSkeletonParam(
+void FreaSimulation::setupServices() {
+    pause_service_ = nh_.advertiseService(
+        "/frea_dart/pause", &FreaSimulation::pauseService, this);
+    unpause_service_ = nh_.advertiseService(
+        "/frea_dart/unpause", &FreaSimulation::unpauseService, this);
+    step_service_ = nh_.advertiseService(
+        "/frea_dart/step", &FreaSimulation::stepService, this);
+    reset_service_ = nh_.advertiseService(
+        "/frea_dart/reset", &FreaSimulation::resetService, this);
+    spawn_robot_service_ = nh_.advertiseService(
+        "/frea_dart/spawn_robot", &FreaSimulation::spawnRobotService, this);
+    set_robot_state_service_ = nh_.advertiseService(
+        "/frea_dart/set_robot_state",
+        &FreaSimulation::setRobotStateService,
+        this);
+    get_robot_state_service_ = nh_.advertiseService(
+        "/frea_dart/get_robot_state",
+        &FreaSimulation::getRobotStateService,
+        this);
+}
+
+bool FreaSimulation::loadSkeletonParam(
     std::string robot_description, bool ctrl)
 {
     std::string desc;
     loadParam(robot_description, desc);
 
-    if(desc == "") return;
+    if(desc == "") return false;
 
     dart::utils::DartLoader loader;
     dart::dynamics::SkeletonPtr skele = loader.parseSkeletonString(
@@ -83,7 +108,7 @@ void FreaSimulation::loadSkeletonParam(
     if(!skele) {
         ROS_ERROR_STREAM(
             "Failed to load skeleton from " << robot_description);
-        return;
+        return false;
     }
 
     skele->setSelfCollisionCheck(false);
@@ -93,16 +118,17 @@ void FreaSimulation::loadSkeletonParam(
 
     if(ctrl)
         robot_ctrl_.reset(new RobotController(skele));
+    return true;
 }
 
-void FreaSimulation::loadSkeletonFile(std::string filepath, bool ctrl) {
+bool FreaSimulation::loadSkeletonFile(std::string filepath, bool ctrl) {
     dart::utils::DartLoader loader;
     dart::dynamics::SkeletonPtr skele = loader.parseSkeleton(filepath);
 
     if(!skele) {
         ROS_ERROR_STREAM(
             "Failed to load skeleton from " << filepath);
-        return;
+        return false;
     }
 
     skele->setSelfCollisionCheck(false);
@@ -112,6 +138,8 @@ void FreaSimulation::loadSkeletonFile(std::string filepath, bool ctrl) {
 
     if(ctrl)
         robot_ctrl_.reset(new RobotController(skele));
+
+    return true;
 }
 
 void FreaSimulation::loadWorld() {
@@ -162,15 +190,46 @@ bool FreaSimulation::windowClosed() {
     return !viewer_->isRealized();
 }
 
-void FreaSimulation::reset() {
-    timestep_ = 0;
+void FreaSimulation::reset(bool reset_time, bool reset_robots) {
+    if(reset_time)
+        timestep_ = 0;
+
+    paused_ = true;
+
+    std::this_thread::sleep_for(target_step_dur_);
+
+    world_->reset();
+
+    // Reset the positions, velocities and efforts of all joints of all
+    // robots
+    if(reset_robots) {
+        size_t num_skeletons = world_->getNumSkeletons();
+        for(size_t i = 0; i < num_skeletons; i++) {
+            const auto &skele = world_->getSkeleton(i);
+            skele->resetPositions();
+            skele->resetVelocities();
+            skele->resetAccelerations();
+            skele->resetCommands();
+            skele->resetGeneralizedForces();
+        }
+
+        step();
+        if(robot_ctrl_) {
+            robot_ctrl_->update(
+                time_, ros::Duration(world_->getTimeStep()), true);
+        }
+    }
+
+    std::this_thread::sleep_for(target_step_dur_);
+
+    paused_ = false;
 }
 
 void FreaSimulation::step() {
     auto step_start = std::chrono::high_resolution_clock::now();
     //ROS_WARN_STREAM("T: " << timestep_);
 
-    world_->step();
+    world_->step(false);
 
     publishTime();
 
@@ -184,25 +243,15 @@ void FreaSimulation::step() {
             robot_ctrl_->update(
                 time_, ros::Duration(world_->getTimeStep()), false);
     }
-    auto dt =
-        std::chrono::duration_cast<std::chrono::nanoseconds>(
-            std::chrono::high_resolution_clock::now() - now);
-    //ROS_INFO_STREAM("Controller update took " << dt.count() / 1e9 << "s");
-
-    if(render_) {
-        render();
-    }
 
     timestep_++;
-
-    dt =
-        std::chrono::duration_cast<std::chrono::nanoseconds>(
-            std::chrono::high_resolution_clock::now() - step_start);
-    //ROS_INFO_STREAM("Step took " << dt.count() / 1e9 << "s");
 }
 
 void FreaSimulation::render() {
-    if(timestep_ % timesteps_per_frame_ == 0) {
+    auto now = std::chrono::high_resolution_clock::now();
+    if(now - last_render_update_ >= render_period_) {
+        last_render_update_ = now;
+
         // Little hack to stop it from randomly crashing
         if(viewer_->getCamera()->getViewMatrix().isNaN()) {
             ROS_WARN("Resetting camera view matrix due to NaNs");
@@ -226,7 +275,13 @@ void FreaSimulation::publishTime() {
 void FreaSimulation::run() {
     while(ros::ok()) {
         auto start = std::chrono::high_resolution_clock::now();
-        step();
+        if(!paused_) {
+            step();
+        }
+
+        if(render_) {
+            render();
+        }
 
         if(windowClosed())
             return;
@@ -237,7 +292,7 @@ void FreaSimulation::run() {
 }
 
 bool FreaSimulation::setSkeletonPose(
-    const std::string name, const Eigen::Affine3d &pose)
+    const std::string name, const Eigen::Affine3d &pose, bool set_initial)
 {
     dart::dynamics::SkeletonPtr skele = world_->getSkeleton(name);
 
@@ -246,7 +301,6 @@ bool FreaSimulation::setSkeletonPose(
         return false;
     }
 
-    // Assume the first joint is the connection to the world
     dart::dynamics::JointPtr joint = skele->getJoint(0);
 
     if(!joint) {
@@ -272,11 +326,178 @@ bool FreaSimulation::setSkeletonPose(
     joint->setPosition(1, ea[1]);
     joint->setPosition(2, ea[2]);
 
-    ROS_INFO_STREAM(
-        "Set Joint " << joint->getName() << " to ["
-        << pose.translation().x() << ", " << pose.translation().y() << ", "
-        << pose.translation().z() << "], [" << ea[0] << ", " << ea[1]
-        << ", " << ea[2] << "]");
+    if(set_initial) {
+        auto initial_positions = joint->getPositions();
+        joint->setInitialPositions(initial_positions);
+    }
 
+    return true;
+}
+
+bool FreaSimulation::setJointStates(
+    std::string robot_name, const sensor_msgs::JointState& joints,
+    bool set_initial)
+{
+    dart::dynamics::SkeletonPtr skele = world_->getSkeleton(robot_name);
+
+    if(!skele) {
+        ROS_ERROR_STREAM("Skeleton '" << robot_name << "' does not exist!");
+        return false;
+    }
+    
+    for(size_t i = 0; i < joints.name.size(); i++) {
+        dart::dynamics::Joint *jnt = skele->getJoint(joints.name[i]);
+        if(!jnt) {
+            ROS_WARN_STREAM(
+                skele->getName() << " does not have a joint called "
+                << joints.name[i]);
+            continue;
+        }
+
+        if(jnt->getNumDofs() != 1) {
+            ROS_WARN_STREAM(
+                "Ignoring joint " << jnt->getName() << " as it has "
+                << jnt->getNumDofs() << " (only 1 is supported).");
+        }
+
+        jnt->setPosition(0, joints.position[i]);
+        jnt->setVelocity(0, joints.velocity[i]);
+        jnt->setForce(0, joints.effort[i]);
+
+        if(set_initial) {
+            jnt->setInitialPosition(0, joints.position[i]);
+            jnt->setInitialVelocity(0, joints.velocity[i]);
+        }
+    }
+
+    return true;
+}
+
+bool FreaSimulation::pauseService(
+    std_srvs::Empty::Request &req, std_srvs::Empty::Response &resp)
+{
+    paused_ = true;
+    return true;
+}
+
+bool FreaSimulation::unpauseService(
+    std_srvs::Empty::Request &req, std_srvs::Empty::Response &resp)
+{
+    paused_ = false;
+    return true;
+}
+
+bool FreaSimulation::stepService(
+    std_srvs::Empty::Request &req, std_srvs::Empty::Response &resp)
+{
+    step();
+    return true;
+}
+
+bool FreaSimulation::resetService(
+    std_srvs::Empty::Request &req, std_srvs::Empty::Response &resp)
+{
+    reset(false, true);
+    return true;
+}
+
+bool FreaSimulation::spawnRobotService(
+    frea_dart_msgs::SpawnRobot::Request &req,
+    frea_dart_msgs::SpawnRobot::Response &resp)
+{
+    if(!loadSkeletonParam(req.urdf_parameter)) {
+        resp.success = false;
+        resp.status_message =
+            "Failed to load skeleton from " + req.urdf_parameter;
+        return false;
+    }
+
+    Eigen::Affine3d pose;
+    tf::poseMsgToEigen(req.initial_pose, pose);
+    if(!setSkeletonPose(req.model_name, pose, true)) {
+        resp.success = false;
+        resp.status_message =
+            "Failed to set pose of " + req.model_name +
+            ". Does it match the robot name in " + req.urdf_parameter + "?";
+        return false;
+    }
+
+    resp.success = true;
+    return true;
+}
+
+bool FreaSimulation::setRobotStateService(
+    frea_dart_msgs::SetRobotState::Request &req,
+    frea_dart_msgs::SetRobotState::Response &resp)
+{
+    Eigen::Affine3d pose;
+    tf::poseMsgToEigen(req.pose, pose);
+    if(!setSkeletonPose(req.robot_name, pose, req.update_initial_state)) {
+        resp.success = false;
+        resp.status_message =
+            "Failed to set pose of " + req.robot_name + " does it exist?";
+        return false;
+    }
+
+    if(!setJointStates(
+        req.robot_name, req.joints, req.update_initial_state))
+    {
+        resp.success = false;
+        resp.status_message = "Failed to set joints of " + req.robot_name;
+        return false;
+    }
+
+    resp.success = true;
+    return true;
+}
+
+bool FreaSimulation::getRobotStateService(
+    frea_dart_msgs::GetRobotState::Request &req,
+    frea_dart_msgs::GetRobotState::Response &resp)
+{
+    dart::dynamics::SkeletonPtr skele = world_->getSkeleton(req.robot_name);
+
+    if(!skele) {
+        resp.success = false;
+        ROS_ERROR_STREAM(
+            "Skeleton '" << req.robot_name << "' does not exist!");
+        resp.status_message =
+            "Failed to get state of " + req.robot_name + " does it exist?";
+        return false;
+    }
+
+    double X, Y, Z, r, p, y;
+    r = skele->getPosition(0);
+    p = skele->getPosition(1);
+    y = skele->getPosition(2);
+    X = skele->getPosition(3);
+    Y = skele->getPosition(4);
+    Z = skele->getPosition(5);
+
+    Eigen::Affine3d pose;
+    pose = Eigen::Translation3d(X, Y, Z)
+           * Eigen::AngleAxisd(y, Eigen::Vector3d::UnitZ())
+           * Eigen::AngleAxisd(p, Eigen::Vector3d::UnitY())
+           * Eigen::AngleAxisd(r, Eigen::Vector3d::UnitX());
+
+    resp.header.frame_id = "world";
+    resp.header.stamp = ros::Time::now();
+
+    tf::poseEigenToMsg(pose, resp.pose);
+
+    size_t num_jnts = skele->getNumJoints();
+    for(size_t i = 0; i < num_jnts; i++) {
+        auto *jnt = skele->getJoint(i);
+
+        if(jnt->getNumDofs() != 1)
+            continue;
+
+        resp.joints.name.push_back(jnt->getName());
+        resp.joints.position.push_back(jnt->getPosition(0));
+        resp.joints.velocity.push_back(jnt->getVelocity(0));
+        resp.joints.effort.push_back(jnt->getForce(0));
+    }
+
+    resp.success = true;
     return true;
 }

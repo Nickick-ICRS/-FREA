@@ -1,0 +1,11 @@
+# The name of the model
+string model_name
+# The parameter from which the urdf can be found
+string urdf_parameter
+# Pose to spawn the robot at
+geometry_msgs/Pose initial_pose
+# Reference frame of the pose
+string reference_frame = "world"
+---
+bool success
+string status_message

@@ -16,4 +16,5 @@
   <depend>rospy</depend>
   <depend>controller_manager</depend>
   <depend>hardware_interface</depend>
+  <depend>eigen_conversions</depend>
 </package>
