@@ -1,5 +1,7 @@
 #include "frea_dart/robot.hpp"
 
+#include <joint_limits_interface/joint_limits_urdf.h>
+
 std::ostream& operator<<(std::ostream &os, const ControlType &type) {
     switch(type) {
     case ControlType::POSITION:
@@ -16,7 +18,11 @@ std::ostream& operator<<(std::ostream &os, const ControlType &type) {
     return os;
 }
 
-Robot::Robot(const dart::dynamics::SkeletonPtr &skele) :skele_(skele) {
+Robot::Robot(
+    const dart::dynamics::SkeletonPtr &skele,
+    const std::shared_ptr<urdf::Model> &urdf)
+    :skele_(skele)
+{
     ROS_ASSERT_MSG(skele != nullptr, "Cannot control a null-skeleton!");
 
     const auto &jnts = skele->getJoints();
@@ -106,6 +112,13 @@ Robot::Robot(const dart::dynamics::SkeletonPtr &skele) :skele_(skele) {
             jnt->getName(), &pos_[i], &vel_[i], &eff_[i]);
         jnt_state_interface_.registerHandle(state_handle);
 
+        // Load joint limits from URDF
+        std::shared_ptr<const urdf::Joint> urdf_joint =
+            urdf->getJoint(jnt->getName());
+        joint_limits_interface::JointLimits limits;
+        bool limits_found =
+            joint_limits_interface::getJointLimits(urdf_joint, limits);
+
         std::string type;
         // First check and see if it's a position controller
         std::string param =
@@ -115,6 +128,11 @@ Robot::Robot(const dart::dynamics::SkeletonPtr &skele) :skele_(skele) {
             hardware_interface::JointHandle jh(
                 jnt_state_interface_.getHandle(jnt->getName()), &cmd_[i]);
             jnt_pos_interface_.registerHandle(jh);
+            if(limits_found) {
+                joint_limits_interface::PositionJointSaturationHandle
+                    plh(jh, limits);
+                jnt_pos_limits_interface_.registerHandle(plh);
+            }
             set_ctrl_type(jnt, type, ControlType::POSITION, i);
             continue;
         }
@@ -126,6 +144,11 @@ Robot::Robot(const dart::dynamics::SkeletonPtr &skele) :skele_(skele) {
             hardware_interface::JointHandle jh(
                 jnt_state_interface_.getHandle(jnt->getName()), &cmd_[i]);
             jnt_vel_interface_.registerHandle(jh);
+            if(limits_found) {
+                joint_limits_interface::VelocityJointSaturationHandle
+                    vlh(jh, limits);
+                jnt_vel_limits_interface_.registerHandle(vlh);
+            }
             set_ctrl_type(jnt, type, ControlType::VELOCITY, i);
             continue;
         }
@@ -134,6 +157,14 @@ Robot::Robot(const dart::dynamics::SkeletonPtr &skele) :skele_(skele) {
         param = param_ns + "effort/" + jnt->getName() + "_controller/";
         if(ros::param::get(param + "type", type)) {
             // Create an effort interface handle
+            hardware_interface::JointHandle jh(
+                jnt_state_interface_.getHandle(jnt->getName()), &cmd_[i]);
+            jnt_eff_interface_.registerHandle(jh);
+            if(limits_found) {
+                joint_limits_interface::EffortJointSaturationHandle
+                    elh(jh, limits);
+                jnt_eff_limits_interface_.registerHandle(elh);
+            }
             set_ctrl_type(jnt, type, ControlType::EFFORT, i);
             continue;
         }
@@ -149,6 +180,9 @@ Robot::Robot(const dart::dynamics::SkeletonPtr &skele) :skele_(skele) {
     registerInterface(&jnt_pos_interface_);
     registerInterface(&jnt_vel_interface_);
     registerInterface(&jnt_eff_interface_);
+    registerInterface(&jnt_pos_limits_interface_);
+    registerInterface(&jnt_vel_limits_interface_);
+    registerInterface(&jnt_eff_limits_interface_);
 }
 
 Robot::~Robot() {
@@ -175,7 +209,11 @@ void Robot::read() {
     }
 }
 
-void Robot::write() {
+void Robot::write(ros::Duration period) {
+    jnt_pos_limits_interface_.enforceLimits(period);
+    jnt_vel_limits_interface_.enforceLimits(period);
+    jnt_eff_limits_interface_.enforceLimits(period);
+
     for(size_t i = 0; i < jnt_idx_arr_.size(); i++) {
         bool skip = false;
         for(size_t j : ignore_jnts_) {

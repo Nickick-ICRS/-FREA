@@ -8,6 +8,7 @@
 #include <sensor_msgs/JointState.h>
 #include <std_msgs/Float64.h>
 #include <controller_manager/controller_manager.h>
+#include <urdf/model.h>
 
 #include <dart/dart.hpp>
 
@@ -18,8 +19,12 @@ public:
      * @brief Constructor
      *
      * @param skele The skeleton of the robot to control
+     *
+     * @param urdf The urdf of the robot
      */
-    RobotController(const dart::dynamics::SkeletonPtr &skele);
+    RobotController(
+        const dart::dynamics::SkeletonPtr &skele,
+        const std::shared_ptr<urdf::Model> &urdf);
 
     /**
      * @brief Destructor

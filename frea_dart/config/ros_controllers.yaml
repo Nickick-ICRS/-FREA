@@ -5,44 +5,44 @@ frea:
             publish_rate: 50
         position:
             left_ear_joint_controller:
-                type: effort_controllers/JointPositionController
+                type: velocity_controllers/JointPositionController
                 joint: left_ear_joint
-                pid: {p: 10, i: 0, d: 0.1, i_clamp_min: 0, i_clamp_max: 0}
+                pid: {p: 10, i: 0, d: 1, i_clamp_min: 0, i_clamp_max: 0}
 
             right_ear_joint_controller:
-                type: effort_controllers/JointPositionController
+                type: velocity_controllers/JointPositionController
                 joint: right_ear_joint
-                pid: {p: 10, i: 0, d: 0.1, i_clamp_min: 0, i_clamp_max: 0}
+                pid: {p: 10, i: 0, d: 1, i_clamp_min: 0, i_clamp_max: 0}
 
             mouth_joint_controller:
-                type: effort_controllers/JointPositionController
+                type: velocity_controllers/JointPositionController
                 joint: mouth_joint
-                pid: {p: 10, i: 0, d: 0.1, i_clamp_min: 0, i_clamp_max: 0}
+                pid: {p: 10, i: 0, d: 1, i_clamp_min: 0, i_clamp_max: 0}
 
             head_joint_controller:
-                type: effort_controllers/JointPositionController
+                type: velocity_controllers/JointPositionController
                 joint: head_joint
-                pid: {p: 100, i: 0, d: 0.1, i_clamp_min: 0, i_clamp_max: 0}
+                pid: {p: 10, i: 0, d: 1, i_clamp_min: 0, i_clamp_max: 0}
 
             lower_neck_joint_controller:
-                type: effort_controllers/JointPositionController
+                type: velocity_controllers/JointPositionController
                 joint: lower_neck_joint
-                pid: {p: 100000, i: 0, d: 100, i_clamp_min: 0, i_clamp_max: 0}
+                pid: {p: 160, i: 0, d: 16, i_clamp_min: 0, i_clamp_max: 0}
 
             upper_neck_joint_controller:
-                type: effort_controllers/JointPositionController
+                type: velocity_controllers/JointPositionController
                 joint: upper_neck_joint
-                pid: {p: 10000, i: 0, d: 10, i_clamp_min: 0, i_clamp_max: 0}
+                pid: {p: 160, i: 0, d: 16, i_clamp_min: 0, i_clamp_max: 0}
 
             upper_tail_joint_controller:
-                type: effort_controllers/JointPositionController
+                type: velocity_controllers/JointPositionController
                 joint: upper_tail_joint
-                pid: {p: 10000, i: 0, d: 10, i_clamp_min: 0, i_clamp_max: 0}
+                pid: {p: 160, i: 0, d: 16, i_clamp_min: 0, i_clamp_max: 0}
 
             lower_tail_joint_controller:
-                type: effort_controllers/JointPositionController
+                type: velocity_controllers/JointPositionController
                 joint: lower_tail_joint
-                pid: {p: 10000, i: 0, d: 10, i_clamp_min: 0, i_clamp_max: 0}
+                pid: {p: 160, i: 0, d: 16, i_clamp_min: 0, i_clamp_max: 0}
 
         velocity:
             left_wheel_joint_controller:

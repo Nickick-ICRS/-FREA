@@ -7,6 +7,7 @@
 
 #include <rosgraph_msgs/Clock.h>
 #include <eigen_conversions/eigen_msg.h>
+#include <urdf/model.h>
 
 #include <chrono>
 #include <thread>
@@ -123,8 +124,11 @@ bool FreaSimulation::loadSkeletonParam(
     ROS_INFO_STREAM("Loaded skeleton '" << skele->getName() << "'");
     world_->addSkeleton(skele);
 
-    if(ctrl)
-        robot_ctrl_.reset(new RobotController(skele));
+    if(ctrl) {
+        auto urdf = std::make_shared<urdf::Model>();
+        urdf->initParam(robot_description);
+        robot_ctrl_.reset(new RobotController(skele, urdf));
+    }
 
     plugin_manager_.loadPlugins(world_, skele);
     return true;
@@ -145,8 +149,12 @@ bool FreaSimulation::loadSkeletonFile(std::string filepath, bool ctrl) {
     ROS_INFO_STREAM("Loaded skeleton '" << skele->getName() << "'");
     world_->addSkeleton(skele);
 
-    if(ctrl)
-        robot_ctrl_.reset(new RobotController(skele));
+    if(ctrl) {
+        ROS_WARN_STREAM(
+            "ROS Control only supported for robots loaded via parameter"
+            << " server");
+        // robot_ctrl_.reset(new RobotController(skele));
+    }
 
     return true;
 }

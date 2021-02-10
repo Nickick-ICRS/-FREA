@@ -1,8 +1,10 @@
 #include "frea_dart/robot_controller.hpp"
 
-RobotController::RobotController(const dart::dynamics::SkeletonPtr &skele)
+RobotController::RobotController(
+    const dart::dynamics::SkeletonPtr &skele,
+    const std::shared_ptr<urdf::Model> &urdf)
 {
-    robot_.reset(new Robot(skele));
+    robot_.reset(new Robot(skele, urdf));
 
     // Set up controller manager with its own AsyncSpinner
     nh_.setCallbackQueue(&queue_);
@@ -23,5 +25,5 @@ void RobotController::update(
 {
     robot_->read();
     cm_->update(time, period, reset_controllers);
-    robot_->write();
+    robot_->write(period);
 }

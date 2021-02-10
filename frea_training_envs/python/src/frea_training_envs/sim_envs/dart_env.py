@@ -61,29 +61,17 @@ class DartEnv(gym.Env):
 
     def _reset_sim(self):
         if self.reset_controls:
-            rospy.logwarn("1")
-            self.simulator.unpauseSim()
-            rospy.logwarn("2")
-            self.controllers_object.reset_controllers()
-            rospy.logwarn("3")
-            self._check_all_systems_ready()
-            rospy.logwarn("4")
-            self._set_init_pose()
-            rospy.logwarn("5")
             self.simulator.resetSim()
-            rospy.logwarn("6")
+            self._set_init_pose()
+            self.simulator.unpauseSim()
             self.controllers_object.reset_controllers()
-            rospy.logwarn("7")
             self._check_all_systems_ready()
-            rospy.logwarn("8")
             self.simulator.pauseSim()
-            rospy.logwarn("9")
         
         else:
-            self.simulator.unpauseSim()
-            self._check_all_systems_ready()
-            self._set_init_pose()
             self.simulator.resetSim()
+            self._set_init_pose()
+            self.simulator.unpauseSim()
             self._check_all_systems_ready()
             self.simulator.pauseSim()
 

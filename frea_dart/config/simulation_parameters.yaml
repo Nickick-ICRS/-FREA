@@ -5,5 +5,5 @@ frea_dart:
         enable_rendering: true
         fps: 60
     simulation:
-        steps_per_s: 10
+        steps_per_s: -1
         start_paused: true

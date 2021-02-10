@@ -107,7 +107,7 @@ class FreaEnv(dart_env.DartEnv):
         self._check_all_publishers_ready()
         self.simulator.pauseSim()
 
-        rospy.loginfo("Finished FreaEnv INIT")
+        rospy.logdebug("Finished FreaEnv INIT")
 
     def joints_callback(self, data):
         self.joints = data
@@ -151,10 +151,10 @@ class FreaEnv(dart_env.DartEnv):
                     rate.sleep()
                 except rospy.ROSInterruptException:
                     pass
-            rospy.loginfo("'" + pub.resolved_name + "' connected")
+            rospy.logdebug("'" + pub.resolved_name + "' connected")
             pub_num += 1
 
-        rospy.loginfo("All publishers READY")
+        rospy.logdebug("All publishers READY")
 
     def _check_all_systems_ready(self, init=True):
         self.base_position = None
@@ -172,12 +172,12 @@ class FreaEnv(dart_env.DartEnv):
                     velocity_ok = all(
                         abs(i) <= 1e-2 for i in self.base_position.velocity)
                     ok = position_ok and velocity_ok
-                    rospy.loginfo("Checking init values Ok => " + str(ok))
+                    rospy.logdebug("Checking init values Ok => " + str(ok))
             except Exception as e:
                 rospy.logerr(e)
                 rospy.logerr("'/joint_states' NOT READY yet, will retry.")
 
-        rospy.loginfo("ALL SYSTEMS READY")
+        rospy.logdebug("ALL SYSTEMS READY")
 
     def move_joints(self, joints_array):
         for i in range(len(joints_array)):
@@ -194,7 +194,7 @@ class FreaEnv(dart_env.DartEnv):
             try:
                 self.clock_time = rospy.wait_for_message(
                     "/clock", Clock, timeout=1.0)
-                rospy.loginfo("'/clock' READY => " + str(self.clock_time))
+                rospy.logdebug("'/clock' READY => " + str(self.clock_time))
             except:
                 rospy.logerr("Waiting for '/clock' to come online")
         return self.clock_time

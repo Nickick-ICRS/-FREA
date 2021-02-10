@@ -5,6 +5,8 @@
 #include <hardware_interface/joint_command_interface.h>
 #include <hardware_interface/joint_state_interface.h>
 #include <hardware_interface/robot_hw.h>
+#include <joint_limits_interface/joint_limits_interface.h>
+#include <urdf/model.h>
 
 #include <dart/dart.hpp>
 
@@ -22,8 +24,12 @@ public:
      * @brief Constructor
      *
      * @param skele The skeleton of the robot
+     *
+     * @param urdf The URDF model of the robot
      */
-    Robot(const dart::dynamics::SkeletonPtr &skele);
+    Robot(
+        const dart::dynamics::SkeletonPtr &skele,
+        const std::shared_ptr<urdf::Model> &urdf);
 
     /**
      * @brief Destructor
@@ -37,8 +43,10 @@ public:
 
     /**
      * @brief Write joint commands to the simulation
+     *
+     * @param period The time duration since the last update
      */
-    void write();
+    void write(ros::Duration period);
 
 private:
     /**
@@ -65,6 +73,24 @@ private:
      * @brief Effort Joint State Interface (see ROS Control)
      */
     hardware_interface::EffortJointInterface jnt_eff_interface_;
+
+    /**
+     * @brief Position Joint Limits Interface
+     */
+    joint_limits_interface::PositionJointSaturationInterface
+        jnt_pos_limits_interface_;
+
+    /**
+     * @brief Veloctity Joint Limits Interface
+     */
+    joint_limits_interface::VelocityJointSaturationInterface
+        jnt_vel_limits_interface_;
+
+    /**
+     * @brief Effort Joint Limits Interface
+     */
+    joint_limits_interface::EffortJointSaturationInterface
+        jnt_eff_limits_interface_;
 
     /**
      * @brief Command values (see ROS control)

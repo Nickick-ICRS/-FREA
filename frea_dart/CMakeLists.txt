@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
     frea_msgs
     roscpp
     rospy
+    urdf
     controller_manager
     hardware_interface
     eigen_conversions

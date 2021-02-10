@@ -156,9 +156,6 @@ class FreaMotionControlEnv(FreaEnv):
         self.target_head_pitch, self.head_pitch_tol = \
             self.generate_head_pitch()
         self.target_cmd_vel, self.cmd_vel_tol = self.generate_cmd_vel()
-        rospy.loginfo("Target cmd_vel:\n" + str(self.target_cmd_vel))
-        rospy.loginfo("Target head_pos:\n" + str(self.target_head_position))
-        rospy.loginfo("Target head_pitch:\n" + str(self.target_head_pitch))
         self.generate_random_head_and_tail_weights()
 
     def generate_head_position(self):
@@ -193,9 +190,6 @@ class FreaMotionControlEnv(FreaEnv):
         r = np.random.rand(2)
         head = self.head_weight_min + r[0] * self.head_weight_range
         tail = self.tail_weight_min + r[1] * self.tail_weight_range
-
-        rospy.loginfo("Setting head mass to {} kg".format(head))
-        rospy.loginfo("Setting tail mass to {} kg".format(tail))
 
         self.set_head_mass(head)
         self.set_tail_mass(tail)
