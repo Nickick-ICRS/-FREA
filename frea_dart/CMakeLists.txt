@@ -41,6 +41,7 @@ target_link_libraries(${PROJECT_NAME}_plugins
 add_library(${PROJECT_NAME}_frea_simulation
     src/frea_dart/robot.cpp
     src/frea_dart/robot_controller.cpp
+    src/frea_dart/pid.cpp
     src/frea_dart/frea_simulation.cpp
 )
 target_link_libraries(${PROJECT_NAME}_frea_simulation

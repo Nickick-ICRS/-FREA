@@ -119,7 +119,7 @@ bool FreaSimulation::loadSkeletonParam(
         return false;
     }
 
-    skele->setSelfCollisionCheck(false);
+    skele->setSelfCollisionCheck(true);
 
     ROS_INFO_STREAM("Loaded skeleton '" << skele->getName() << "'");
     world_->addSkeleton(skele);
