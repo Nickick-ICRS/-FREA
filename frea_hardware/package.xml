@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>frea_hardware</name>
+  <version>0.0.0</version>
+  <description>The frea_hardware package</description>
+
+  <maintainer email="nickhafner@rocketmail.com">Nick Hafner</maintainer>
+
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>rospy</depend>
+  <depend>frea_msgs</depend>
+</package>
