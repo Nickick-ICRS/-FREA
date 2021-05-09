@@ -6,3 +6,6 @@
 
 # Xacro'd up URDF
 frea_description/urdf/generated/*
+
+# Machine-specific CATKIN_IGNORE files
+*CATKIN_IGNORE
