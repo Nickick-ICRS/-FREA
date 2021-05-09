@@ -1,29 +1,30 @@
 #!/usr/bin/env python3
 
-#import rospy
+import rospy
 import time
 
 from frea_hardware.head_communicator import HeadCommunicator
+from frea_hardware.service_handler import ServiceHandler
 
 
 def main():
-    hc = HeadCommunicator('/dev/ttyUSB0')
-    H = [0, 20, 40, 60, 80, 100, 120, 140, 160]
-    S = [100, 90, 80, 70, 60, 70, 80, 90, 100]
-    V = [100, 100, 80, 80, 100, 80, 80, 100, 100]
+    rospy.init_node("frea_head")
+    device = '/dev/ttyUSB0'
 
-    i = 0
-    while True:
-        h = H[i:] + H[:i]
-        s = S[i:] + S[:i]
-        v = V[i:] + V[:i]
-        hc.setPixelColours(h, s, v)
-        time.sleep(0.5)
+    rospy.loginfo("Connecting to FREA's head at '" + device + "'...")
 
-        i = (i+1) % 9
+    hc = HeadCommunicator(device)
+
+    rospy.loginfo("Connected to FREA's head at '" + device + "'")
+
+    service_handler = ServiceHandler(hc)
+
+    rospy.loginfo("FREA's head is ready to receive commands")
+
+    rospy.spin()
 
 if __name__ == '__main__':
-#    try:
-    main()
-#    except rospy.ROSInterruptException:
-#        pass
+    try:
+        main()
+    except rospy.ROSInterruptException:
+        pass

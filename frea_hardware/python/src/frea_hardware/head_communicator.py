@@ -40,15 +40,44 @@ class HeadCommunicator:
 
 
     def setHeadRoll(self, rads):
-        if angle > math.pi / 2:
+        if rads > math.pi / 2:
             rospy.logwarn(
                 "Head roll ranges from 0 to {}, received {}".format(
                     math.pi/2, rads))
-        angle_pc = self.radsToPc(angle, 0, math.pi/2)
-        msg = NECK_BYTE + angle_pc + END_MSG_BYTE
+        angle_pc = 100*self.radsToPc(rads, 0, math.pi/2)
+        msg = NECK_BYTE + int(angle_pc).to_bytes(1, 'little') + END_MSG_BYTE
 
-        self._writeMsg(msg)
+        self.writeMsg(msg)
 
+    def setMouthPitch(self, rads):
+        if rads > math.pi / 2:
+            rospy.logwarn(
+                "Mouth pitch ranges from 0 to {}, received {}".format(
+                    math.pi/2, rads))
+        angle_pc = 100*self.radsToPc(rads, 0, math.pi/2)
+        msg = MOUTH_BYTE + int(angle_pc).to_bytes(1, 'little') + END_MSG_BYTE
+
+        self.writeMsg(msg)
+
+    def setRightEarPitch(self, rads):
+        if rads > math.pi / 2:
+            rospy.logwarn(
+                "Right ear pitch ranges from 0 to {}, received {}".format(
+                    math.pi/2, rads))
+        angle_pc = 100*self.radsToPc(rads, 0, math.pi/2)
+        msg = RE_SERVO_BYTE + int(angle_pc).to_bytes(1, 'little') + END_MSG_BYTE
+
+        self.writeMsg(msg)
+
+    def setLeftEarPitch(self, rads):
+        if rads > math.pi / 2:
+            rospy.logwarn(
+                "Left ear pitch ranges from 0 to {}, received {}".format(
+                    math.pi/2, rads))
+        angle_pc = 100*self.radsToPc(rads, 0, math.pi/2)
+        msg = LE_SERVO_BYTE + int(angle_pc).to_bytes(1, 'little') + END_MSG_BYTE
+
+        self.writeMsg(msg)
     
     def setPixelColours(self, h, s, v):
         hsv = zip(h, s, v)
