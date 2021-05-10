@@ -16,6 +16,7 @@
   <depend>tf2_ros</depend>
   <depend>tf_conversions</depend>
   <depend>eigen_conversions</depend>
+  <depend>control_toolbox</depend>
 
   <export>
     <python path="${prefix}/python/src"/>

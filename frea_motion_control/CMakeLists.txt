@@ -4,6 +4,7 @@ project(frea_motion_control)
 add_compile_options(-std=c++11)
 
 find_package(catkin REQUIRED COMPONENTS
+  control_toolbox
   geometry_msgs
   roscpp
   rospy
@@ -24,8 +25,14 @@ include_directories(
 )
 
 add_executable(base_link_tf_publisher
-    src/base_link_tf_publisher
-    src/frea_motion_control/base_link_tf_calculator)
+    src/base_link_tf_publisher.cpp
+    src/frea_motion_control/base_link_tf_calculator.cpp)
 
 target_link_libraries(base_link_tf_publisher
+    ${catkin_LIBRARIES})
+
+add_executable(nlmpc
+    src/nlmpc.cpp)
+
+target_link_libraries(nlmpc
     ${catkin_LIBRARIES})
