@@ -21,7 +21,7 @@
         </inertial>
 
         <visual>
-            <origin xyz="0 ${-mirror*0.021} 0" rpy="0 0 0"/>
+            <origin xyz="0 -0.021 0" rpy="0 0 0"/>
             <geometry>
                 <mesh filename="$(find frea_description)/meshes/wheel.stl"/>
             </geometry>
