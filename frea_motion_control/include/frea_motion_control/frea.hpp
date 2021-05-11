@@ -4,6 +4,11 @@
 #include <Eigen/Core>
 #include <Eigen/StdVector>
 
+#include <ct/rbd/robot/RobCoGenContainer.h>
+#include <ct/rbd/robot/Kinematics.h>
+#include <ct/rbd/robot/Dynamics.h>
+#include <ct/rbd/state/RigidBodyPose.h>
+
 // Generated from rcg and installed via sudo make install...
 #include "generated/declarations.h"
 #include "generated/jsim.h"

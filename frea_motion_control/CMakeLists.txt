@@ -4,7 +4,6 @@ project(frea_motion_control)
 add_compile_options(-std=c++11)
 
 find_package(catkin REQUIRED COMPONENTS
-  control_toolbox
   geometry_msgs
   roscpp
   rospy
@@ -14,6 +13,10 @@ find_package(catkin REQUIRED COMPONENTS
   tf_conversions
   eigen_conversions
 )
+
+find_package(ct_core REQUIRED)
+find_package(ct_rbd REQUIRED)
+find_package(ct_optcon REQUIRED)
 
 catkin_python_setup()
 
