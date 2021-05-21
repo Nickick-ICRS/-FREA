@@ -5,11 +5,11 @@
 
 // Pin definitions
 #define WS2812_PIN 3
-#define LEFT_EAR 5
-#define LEFT_MOUTH 6
-#define RIGHT_EAR 9
-#define RIGHT_MOUTH 11
-#define NECK 10
+#define LEFT_EAR 5 # M1
+#define LEFT_MOUTH 6 # M2
+#define RIGHT_EAR 9 # M3
+#define RIGHT_MOUTH 11 # M4
+#define NECK 10 # M5
 
 // Servo objects
 Servo left_ear;
