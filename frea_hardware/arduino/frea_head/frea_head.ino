@@ -5,11 +5,11 @@
 
 // Pin definitions
 #define WS2812_PIN 3
-#define LEFT_EAR 5 # M1
-#define LEFT_MOUTH 6 # M2
-#define RIGHT_EAR 9 # M3
-#define RIGHT_MOUTH 10 # M4
-#define NECK 11 # M5
+#define LEFT_EAR 5 // M1
+#define LEFT_MOUTH 6 // M2
+#define RIGHT_EAR 9 // M3
+#define RIGHT_MOUTH 10 // M4
+#define NECK 11 // M5
 
 // Servo objects
 Servo left_ear;
@@ -197,4 +197,4 @@ void loop() {
     while (1) {
         update_instructions();
     }
-
+}
