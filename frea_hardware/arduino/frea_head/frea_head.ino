@@ -1,4 +1,5 @@
 #include <Adafruit_NeoPixel.h>
+#include <Adafruit_MPR121.h>
 #include <Servo.h>
 
 #define NUM_PIXELS 9
@@ -27,13 +28,20 @@ struct Pixel {
 Pixel pixels[NUM_PIXELS];
 Adafruit_NeoPixel strip(NUM_PIXELS, WS2812_PIN, NEO_GRB | NEO_KHZ800);
 
+// Capacitive Touch Sensor
+Adafruit_MPR121 cap_touch;
+
+// Our I2C address is 0x5A
+#define CAP_TOUCH_ADDR 0x5A
+
 // Communication protocol special characters
-const uint8_t END_MSG_BYTE  = 0xFF;
-const uint8_t LE_SERVO_BYTE = 0x01;
-const uint8_t RE_SERVO_BYTE = 0x02;
- uint8_t MOUTH_BYTE    = 0x04;
-const uint8_t NECK_BYTE     = 0x08;
-const uint8_t PIXELS_BYTE   = 0x0F;
+const uint8_t END_MSG_BYTE   = 0xFF;
+const uint8_t LE_SERVO_BYTE  = 0x01;
+const uint8_t RE_SERVO_BYTE  = 0x02;
+const uint8_t MOUTH_BYTE     = 0x04;
+const uint8_t NECK_BYTE      = 0x08;
+const uint8_t PIXELS_BYTE    = 0x10;
+const uint8_t CAP_TOUCH_BYTE = 0x20;
 
 // Communication message buffer
 uint8_t buffer_size = 0;
@@ -171,6 +179,42 @@ void update_instructions() {
     }
 }
 
+// Function to read the capacitative touch sensor and publish data over serial
+void update_cap_touch() {
+    const uint8_t NUM_COLS = 6;
+    const uint8_t NUM_ROWS = 6;
+    const uint8_t MAT_SIZE = NUM_COLS * NUM_ROWS;
+
+    // Read which pins are touched
+    uint16_t touched_pins = cap_touch.touched();
+    
+    // Row-major matrix of touched pins - default 0
+    uint8_t touch_matrix[MAT_SIZE];
+    memset(touchmatrix, 0, MAT_SIZE);
+
+    // Loop though cols
+    for (uint8_t i = 0; i < NUM_COLS; i++) {
+        if (touched_pins & (1 << i)) {
+            // This col was touched, compare with rows
+            for (uint8_t j = 0; j < NUM_ROWS; j++) {
+                // Rows start at NUM_COLS
+                if (touched_pins & (1 << (NUM_COLS + j))) {
+                    // This section of the matrix was touched
+                    // (we can't handle multiple presses at once)
+                    matrix[i + NUM_ROWS * j] = 1;
+                }
+            }
+        }
+    }
+
+    // Send the matrix over serial
+    Serial.putc(CAP_TOUCH_BYTE);
+    for (uint8_t i = 0; i < MAT_SIZE; i++) {
+        Serial.putc(touch_matrix[i]);
+    }
+    Serial.putc(END_MSG_BYTE);
+}
+
 void setup() {
     left_ear.attach(LEFT_EAR);
     right_ear.attach(RIGHT_EAR);
@@ -191,10 +235,27 @@ void setup() {
         strip.setPixelColor(i, pixels[i].r, pixels[i].g, pixels[i].b);
     }
     strip.show();
+
+    cap_touch = Adafruit_MPR121();
+    if(!cap_touch.begin(CAP_TOUCH_ADDR)) {
+        delay(1000);
+        // Failed to connect - set NeoPix to red to raise an issue
+        for(size_t i = 0; i < NUM_PIXELS; i++) {
+            pixels[i].r = 255;
+            pixels[i].g =   0;
+            pixels[i].b =   0;
+            strip.setPixelColor(i, pixels[i].r, pixels[i].g, pixels[i].b);
+        }
+        strip.show();
+        // We failed to connect so freeze
+        while(1)
+            ;
+    }
 }
 
 void loop() {
     while (1) {
         update_instructions();
+        update_cap_touch();
     }
 }
