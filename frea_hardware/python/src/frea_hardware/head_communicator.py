@@ -2,6 +2,9 @@ import serial
 import math
 import time
 
+import rospy
+from std_msgs.msg import UInt8MultiArray
+
 from frea_hardware.head_communication_protocol import *
 from frea_hardware.exceptions import *
 
@@ -12,11 +15,15 @@ class HeadCommunicator:
         self._serial = serial.Serial()
         self._serial.baudrate = HEAD_BAUD
         self._serial.port = port
-        self._serial.timeout = 1
+        # Non-blocking reads
+        self._serial.timeout = 0
         self._serial.open()
 
         if not self._serial.is_open:
             raise HardwareFailedToConnect
+
+        self._touch_pub = rospy.Publisher(
+            "/frea_head/touch_sensor", UInt8MultiArray(), queue_size=10)
 
         # Wait for reset
         time.sleep(5)
@@ -39,6 +46,28 @@ class HeadCommunicator:
             raise HardwareConnectionInterrupted
         self._serial.write(msg)
         self._serial.flush()
+
+
+    def readMsgs(self):
+        if not self._serial.is_open:
+            raise HardwareConnectionInterrupted
+        data = self._serial.read()
+        t = 0.1
+        s = time.monotonic()
+        while data is not None and time.monotonic() - s < t:
+            if data == CAP_TOUCH_BYTE:
+                total_data = []
+                while len(total_data) < 36 and time.monotonic() - s < t:
+                    data = self._serial.read()
+                    total_data.append(int.from_bytes(data, 'little'))
+                self.processTouchData(np.array(total_data))
+            data = self._serial.read()
+
+    
+    def processTouchData(self, touch_data):
+        msg = UInt8MultiArray()
+        msg.data = touch_data
+        self._touch_pub.publish(touch_data)
 
 
     def setHeadRoll(self, rads):
