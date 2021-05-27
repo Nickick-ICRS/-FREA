@@ -5,6 +5,8 @@ import time
 from frea_hardware.head_communication_protocol import *
 from frea_hardware.exceptions import *
 
+import rospy
+
 class HeadCommunicator:
     def __init__(self, port):
         self._serial = serial.Serial()
@@ -79,6 +81,7 @@ class HeadCommunicator:
 
         self.writeMsg(msg)
     
+    # 0-180, 0-100, 0-100
     def setPixelColours(self, h, s, v):
         hsv = zip(h, s, v)
         flattened_hsv = [item for sublist in ([a, b, c] for a, b, c in hsv) for item in sublist]
